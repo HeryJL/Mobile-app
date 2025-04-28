@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { AuthContext } from '../../context/AuthContext';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, FontAwesome, Ionicons } from '@expo/vector-icons';
@@ -14,7 +14,7 @@ const DriverProfileScreen = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScrollView contentContainerStyle={{ paddingTop: insets.top, paddingHorizontal: 20, paddingBottom: 30 }}>
         <Text style={styles.title}>Profil du Conducteur</Text>
 
         {user && (
@@ -24,62 +24,46 @@ const DriverProfileScreen = () => {
               style={styles.avatar}
             />
             <Text style={styles.label}>Nom : <Text style={styles.value}>{user.firstName} {user.lastName}</Text> </Text>
-
-
             <Text style={styles.label}>Email : <Text style={styles.value}>{user.email}</Text></Text>
 
-
             {user.licenseNumber && (
-              <>
-                <Text style={styles.label}>Numéro de permis : <Text style={styles.value}>{user.licenseNumber}</Text> </Text>
-
-              </>
+              <Text style={styles.label}>Numéro de permis : <Text style={styles.value}>{user.licenseNumber}</Text></Text>
             )}
             {user.carModel && (
-              <>
-                <Text style={styles.label}>Modèle de voiture : <Text style={styles.value}>{user.carModel}</Text></Text>
-
-              </>
+              <Text style={styles.label}>Modèle de voiture : <Text style={styles.value}>{user.carModel}</Text></Text>
             )}
             {user.carPlate && (
-              <>
-                <Text style={styles.label}>Plaque d'immatriculation : <Text style={styles.value}>{user.carPlate}</Text></Text>
-              </>
+              <Text style={styles.label}>Plaque d'immatriculation : <Text style={styles.value}>{user.carPlate}</Text></Text>
             )}
-
           </View>
         )}
 
         <View style={styles.stats}>
-          <Text style={styles.label}>Statistques</Text>
+          <Text style={styles.label}>Statistiques</Text>
           <View style={styles.driverStats}>
             <View style={styles.statItem}>
               <MaterialIcons name="directions-car" size={24} color="#007AFF" />
               <Text style={styles.statText}>9 courses</Text>
             </View>
-
             <View style={styles.statItem}>
               <FontAwesome name="star" size={24} color="#FFD700" />
               <Text style={styles.statText}>3/5</Text>
             </View>
-
             <View style={styles.statItem}>
               <FontAwesome name="money" size={24} color="#4CAF50" />
               <Text style={styles.statText}>€</Text>
             </View>
-
             <View style={styles.statItem}>
               <Ionicons name="time" size={24} color="#9C27B0" />
-              <Text style={styles.statText}>
-                h en ligne
-              </Text>
+              <Text style={styles.statText}>h en ligne</Text>
             </View>
           </View>
         </View>
+
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Text style={styles.logoutText}>Se déconnecter</Text>
-          </TouchableOpacity>
-      </View>
+          <Text style={styles.logoutText}>Se déconnecter</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -88,33 +72,27 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#f2f2f2',
-    flexDirection: 'row',
   },
   avatar: {
     width: 100,
     height: 100,
     borderRadius: 50,
     marginBottom: 10,
-    marginHorizontal: 'auto',
-
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-    alignItems: 'center',
+    alignSelf: 'center',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 30,
     color: '#333',
+    textAlign: 'center',
   },
   profileCard: {
     width: '100%',
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 20,
-    marginBottom: 10,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -130,18 +108,6 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 16,
     color: '#111',
-    marginBottom: 5,
-  },
-  logoutButton: {
-    backgroundColor: '#FF4D4F',
-    paddingVertical: 14,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-  },
-  logoutText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   stats: {
     width: '100%',
@@ -156,30 +122,37 @@ const styles = StyleSheet.create({
     elevation: 5,
     alignItems: 'center',
   },
-
   driverStats: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-
-  },
-  statLabel: {
-    marginHorizontal: 'auto',
+    marginTop: 10,
   },
   statItem: {
     width: '48%',
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 8,
     marginBottom: 10,
+    backgroundColor: '#f9f9f9',
   },
   statText: {
     color: 'rgba(0, 0, 0, 0.64)',
     marginLeft: 10,
     fontSize: 16,
-  }
+  },
+  logoutButton: {
+    backgroundColor: '#FF4D4F',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  logoutText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });
 
 export default DriverProfileScreen;
