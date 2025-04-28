@@ -1,125 +1,301 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ActivityIndicator, 
+  TextInput, 
+  KeyboardAvoidingView, 
+  Platform,
+  Animated,
+  Easing,
+  Dimensions
+} from 'react-native';
 import { AuthContext } from '../../context/AuthContext';
-import { Ionicons } from '@expo/vector-icons'; // pour l'icône œil
-import Button from '../../components/Button';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secureEntry, setSecureEntry] = useState(true);
+  const [shakeAnimation] = useState(new Animated.Value(0));
   const { login, isLoading } = useContext(AuthContext);
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      triggerShake();
+      return;
+    }
+    
     try {
       const userType = await login(email, password);
       if (userType === 'user') {
         navigation.navigate('UserHome');
       }
     } catch (error) {
+      triggerShake();
       alert(error.message);
     }
   };
 
+  const triggerShake = () => {
+    Animated.sequence([
+      Animated.timing(shakeAnimation, {
+        toValue: 10,
+        duration: 50,
+        easing: Easing.linear,
+        useNativeDriver: true
+      }),
+      Animated.timing(shakeAnimation, {
+        toValue: -10,
+        duration: 50,
+        useNativeDriver: true
+      }),
+      Animated.timing(shakeAnimation, {
+        toValue: 10,
+        duration: 50,
+        useNativeDriver: true
+      }),
+      Animated.timing(shakeAnimation, {
+        toValue: 0,
+        duration: 50,
+        useNativeDriver: true
+      })
+    ]).start();
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Bienvenue </Text>
-      <Text style={styles.subtitle}>Connectez-vous pour continuer</Text>
+    <LinearGradient
+      colors={['#74c7ec', '#60a5fa']} // Light, soft blue gradient
+      style={styles.container}
+    >
+      <KeyboardAvoidingView
+        style={styles.innerContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <Animated.View style={[styles.header, {
+          transform: [{ translateX: shakeAnimation }]
+        }]}>
+          <View style={styles.logoContainer}>
+            <Ionicons name="car-sport" size={72} color="#ffffff" />
+            <View style={styles.logoPulse} />
+          </View>
+          <Text style={styles.title}>MoraTaxi</Text>
+          <Text style={styles.subtitle}>Votre voyage, simplifié</Text>
+        </Animated.View>
 
-      {/* Champ Email */}
-      <View style={styles.inputContainer}>
-        <Ionicons name="mail-outline" size={20} color="#888" style={styles.icon} />
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-      </View>
+        <Animated.View style={[styles.form, {
+          transform: [{ translateX: shakeAnimation }]
+        }]}>
+          <View style={styles.inputContainer}>
+            <Ionicons name="mail" size={22} color="#ffffff" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Adresse email"
+              placeholderTextColor="#e2e8f0"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+            />
+          </View>
 
-      {/* Champ Mot de passe */}
-      <View style={styles.inputContainer}>
-        <Ionicons name="lock-closed-outline" size={20} color="#888" style={styles.icon} />
-        <TextInput
-          style={styles.input}
-          placeholder="Mot de passe"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={secureEntry}
-          autoCapitalize="none"
-        />
-        <TouchableOpacity onPress={() => setSecureEntry(!secureEntry)}>
-          <Ionicons
-            name={secureEntry ? "eye-off-outline" : "eye-outline"}
-            size={20}
-            color="#888"
-          />
-        </TouchableOpacity>
-      </View>
+          <View style={styles.inputContainer}>
+            <Ionicons name="lock-closed" size={22} color="#ffffff" style={styles.icon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Mot de passe"
+              placeholderTextColor="#e2e8f0"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={secureEntry}
+              autoCapitalize="none"
+            />
+            <TouchableOpacity 
+              onPress={() => setSecureEntry(!secureEntry)}
+              style={styles.eyeButton}
+            >
+              <Ionicons
+                name={secureEntry ? "eye-off" : "eye"}
+                size={22}
+                color="#e2e8f0"
+              />
+            </TouchableOpacity>
+          </View>
 
-      {/* Bouton Se connecter */}
-      <Button
-        title={isLoading ? <ActivityIndicator color="white" /> : "Se connecter"}
-        onPress={handleLogin}
-        disabled={isLoading}
-      />
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('ForgotPassword')}
+            style={styles.forgotPassword}
+          >
+            <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
+          </TouchableOpacity>
 
-      {/* Lien Inscription */}
-      <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-        <Text style={styles.link}>Pas de compte ? S'inscrire</Text>
-      </TouchableOpacity>
-    </View>
+          <TouchableOpacity
+            style={styles.buttonContainer}
+            onPress={handleLogin}
+            disabled={isLoading}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#3b82f6', '#2563eb']} // Lighter blue gradient for buttons
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.button}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Text style={styles.buttonText}>Connexion</Text>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>ou</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity 
+            style={styles.signupButton}
+            onPress={() => navigation.navigate('Signup')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.signupText}>Créer un compte</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  innerContainer: {
+    flex: 1,
     justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#f9fafb',
+    paddingHorizontal: 30,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  logoContainer: {
+    position: 'relative',
+    marginBottom: 15,
+  },
+  logoPulse: {
+    position: 'absolute',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'rgba(96, 165, 250, 0.2)',
+    top: -9,
+    left: -9,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#ffffff',
     marginBottom: 8,
-    textAlign: 'center',
-    color: '#111827',
+    letterSpacing: 1,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
+    color: '#e2e8f0',
     textAlign: 'center',
-    color: '#6b7280',
-    marginBottom: 32,
+  },
+  form: {
+    width: '100%',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#1e293b', // Darker contrast for inputs
     borderRadius: 12,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    marginBottom: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#334155',
   },
   icon: {
-    marginRight: 10,
+    marginRight: 12,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#111827',
+    color: '#ffffff',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
-  link: {
-    color: '#2563eb',
-    textAlign: 'center',
-    marginTop: 20,
+  eyeButton: {
+    padding: 5,
+    marginLeft: 10,
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginBottom: 20,
+  },
+  forgotPasswordText: {
+    color: '#60a5fa',
     fontSize: 14,
-    fontWeight: '500',
+  },
+  buttonContainer: {
+    marginTop: 10,
+    marginBottom: 20,
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  button: {
+    paddingVertical: 18,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+    letterSpacing: 0.5,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#334155',
+  },
+  dividerText: {
+    color: '#64748b',
+    paddingHorizontal: 10,
+    fontSize: 14,
+  },
+  signupButton: {
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  signupText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 15,
   },
 });
 
-export default LoginScreen;
+export default LoginScreen
