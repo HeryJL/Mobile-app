@@ -60,8 +60,8 @@ export default function MapAutocompleteScreen() {
       <MapView
         style={styles.map}
         region={{
-          latitude: selectedLocation ? selectedLocation.latitude : 48.8566,
-          longitude: selectedLocation ? selectedLocation.longitude : 2.3522,
+          latitude: selectedLocation ? selectedLocation.latitude : -18.8792, 
+          longitude: selectedLocation ? selectedLocation.longitude : 47.5079,
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
         }}

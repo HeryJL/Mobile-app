@@ -60,25 +60,7 @@ const UserHomeScreen = () => {
       React.createElement(
         View,
         { style: styles.headerContainer },
-        React.createElement(
-          View,
-          { style: styles.headerContent },
-          React.createElement(Image, {
-            source: { uri: 'https://via.placeholder.com/50' }, // Placeholder for EasyMove logo
-            style: styles.logo,
-          }),
-          React.createElement(
-            View,
-            { style: styles.headerTextContainer },
-            React.createElement(Text, { style: styles.headerText }, 'EasyMove')
-          ),
-          React.createElement(
-            TouchableOpacity,
-            { style: styles.infoIcon },
-            React.createElement(Text, { style: styles.infoText }, 'ℹ️')
-          )
-        ),
-        React.createElement(Text, { style: styles.greetingText }, 'Bonjour, besoin de prendre la route ?'),
+        React.createElement(Text, { style: styles.greetingText }, 'Bonjour,\nBesoin de prendre la route ?'),
         // Tabs Section
         React.createElement(
           View,
@@ -141,7 +123,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   headerContainer: {
-    backgroundColor: '#ffeb3b', // Yellow background
+    backgroundColor: '#60a5fa', // Yellow background
     padding: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
@@ -227,7 +209,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 20,
     right: 20,
-    backgroundColor: '#ffeb3b',
+    backgroundColor: '#60a5fa',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 20,
