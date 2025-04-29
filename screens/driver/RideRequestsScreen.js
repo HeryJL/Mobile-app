@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const rideRequests = [
   { id: '1', distance: 2, pickup: 'Aéroport', destination: 'Centre-ville' },
@@ -33,85 +34,90 @@ const RideRequestsScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Text style={styles.title}>Demandes de Trajets</Text>
-        <FlatList
-          data={rideRequests}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => handleRequestPress(item)} activeOpacity={0.2}>
-              <View style={styles.card}>
-                <Text style={styles.pickupText}>Départ : <Text style={styles.highlight}>{item.pickup}</Text></Text>
-                <Text style={styles.destinationText}>Destination : <Text style={styles.highlight}>{item.destination}</Text></Text>
+    <LinearGradient
+      colors={['#74c7ec', '#60a5fa']}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <View style={ { paddingTop: insets.top }}>
+          <Text style={styles.title}>Demandes de Trajets</Text>
+          <FlatList
+            data={rideRequests}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item }) => (
+              <TouchableOpacity onPress={() => handleRequestPress(item)} activeOpacity={0.2}>
+                <View style={styles.card}>
+                  <Text style={styles.pickupText}>Départ : <Text style={styles.highlight}>{item.pickup}</Text></Text>
+                  <Text style={styles.destinationText}>Destination : <Text style={styles.highlight}>{item.destination}</Text></Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          />
+
+          <Modal
+            visible={isModalVisible}
+            animationType="fade"
+            transparent={true}
+            onRequestClose={() => {
+              setIsModalVisible(false);
+              setSelectedRequest(null);
+            }}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                {selectedRequest && (
+                  <>
+                    <Text style={styles.modalTitle}>Détails de la course</Text>
+                    <View style={styles.map}>
+
+                    </View>
+                    <Text style={styles.modalLabel}>Départ : <Text style={styles.modalInfo}>{selectedRequest.pickup}</Text></Text>
+                    <Text style={styles.modalLabel}>Destination : <Text style={styles.modalInfo}>{selectedRequest.destination}</Text></Text>
+                    <Text style={styles.destinationText}>Distance : <Text style={styles.highlight}>{selectedRequest.distance} Km</Text></Text>
+                    <View style={styles.modalButtonsContainer}>
+                      <TouchableOpacity style={styles.acceptButton} onPress={handleAccept}>
+                        <Text style={styles.buttonText}>Accepter</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.rejectButton} onPress={handleReject}>
+                        <Text style={styles.buttonText}>Refuser</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.closeButton}
+                      onPress={() => {
+                        setIsModalVisible(false);
+                        setSelectedRequest(null);
+                      }}
+                    >
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
-            </TouchableOpacity>
-          )}
-        />
-
-        <Modal
-          visible={isModalVisible}
-          animationType="fade"
-          transparent={true}
-          onRequestClose={() => {
-            setIsModalVisible(false);
-            setSelectedRequest(null);
-          }}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              {selectedRequest && (
-                <>
-                  <Text style={styles.modalTitle}>Détails de la course</Text>
-                  <View style={styles.map}>
-                   
-                  </View>
-                  <Text style={styles.modalLabel}>Départ : <Text style={styles.modalInfo}>{selectedRequest.pickup}</Text></Text>
-                  <Text style={styles.modalLabel}>Destination : <Text style={styles.modalInfo}>{selectedRequest.destination}</Text></Text>
-                  <Text style={styles.destinationText}>Distance : <Text style={styles.highlight}>{selectedRequest.distance} Km</Text></Text>
-                  <View style={styles.modalButtonsContainer}>
-                    <TouchableOpacity style={styles.acceptButton} onPress={handleAccept}>
-                      <Text style={styles.buttonText}>Accepter</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.rejectButton} onPress={handleReject}>
-                      <Text style={styles.buttonText}>Refuser</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.closeButton}
-                    onPress={() => {
-                      setIsModalVisible(false);
-                      setSelectedRequest(null);
-                    }}
-                  >
-                  </TouchableOpacity>
-                </>
-              )}
             </View>
-          </View>
-        </Modal>
-      </View>
-    </SafeAreaView>
+          </Modal>
+        </View>
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f9f9f9',
   },
   container: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
+    paddingBottom: 30,
   },
   title: {
     fontSize: 26,
     fontWeight: '700',
     marginBottom: 20,
     textAlign: 'center',
-    color: '#333',
+    color: 'rgb(255,255,255)',
   },
   listContent: {
     paddingBottom: 20,
@@ -153,9 +159,9 @@ const styles = StyleSheet.create({
     width: '95%',
     elevation: 6,
   },
-  map:{
-    width : '100%',
-    height :'60%',
+  map: {
+    width: '100%',
+    height: '60%',
     backgroundColor: 'rgba(46, 161, 81, 0.88)',
     borderRadius: 10,
   },
@@ -198,7 +204,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 16,
   },
- 
+
 });
 
 export default RideRequestsScreen;

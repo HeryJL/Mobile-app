@@ -1,6 +1,9 @@
-import React, { useState, useContext } from 'react';
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useContext,useState,useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Animated } from 'react-native';
 import { AuthContext } from '../../context/AuthContext';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialIcons, FontAwesome, Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const DriverHomeScreen = () => {
   const [isAvailable, setIsAvailable] = useState(false);
@@ -10,65 +13,86 @@ const DriverHomeScreen = () => {
     console.log('Statut du conducteur:', isAvailable ? 'Indisponible' : 'Disponible');
   };
 
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Bienvenue {user.firstName} </Text>
-
-        <Text style={styles.subtitle}>
-          Statut actuel :
-          <Text style={isAvailable ? styles.statusAvailable : styles.statusUnavailable}>
-            {' '}{isAvailable ? 'Disponible' : 'Indisponible'}
-          </Text>
-        </Text>
-
-        <TouchableOpacity
-          style={[
-            styles.availabilityButton,
-            isAvailable ? styles.available : styles.unavailable,
-          ]}
-          onPress={toggleAvailability}
-          activeOpacity={0.8}
+    <LinearGradient
+      colors={['#74c7ec', '#60a5fa']}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <Animated.ScrollView
+          contentContainerStyle={[styles.scrollContainer, { paddingTop: insets.top }]}
+          style={{ opacity: fadeAnim }}
         >
-          <Text style={styles.availabilityText}>
-            {isAvailable ? 'Passer en Indisponible' : 'Passer en Disponible'}
+          <Text style={styles.title}>Bienvenue {user.firstName} </Text>
+
+          <Text style={styles.subtitle}>
+            Statut actuel :
+            <Text style={isAvailable ? styles.statusAvailable : styles.statusUnavailable}>
+              {' '}{isAvailable ? 'Disponible' : 'Indisponible'}
+            </Text>
           </Text>
-        </TouchableOpacity>
-        <View style={styles.cours}>
-          <Text style={styles.courseLabel}> Course en cours</Text>
-          <View style={styles.map}></View>
+
           <TouchableOpacity
-          style={[
-            styles.cancelButton,
-          ]}
-          activeOpacity={0.8}
-        ><Text style={styles.cancelText}>Terminer</Text></TouchableOpacity>
-        </View>
-      </View>
-    </SafeAreaView>
+            style={[
+              styles.availabilityButton,
+              isAvailable ? styles.available : styles.unavailable,
+            ]}
+            onPress={toggleAvailability}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.availabilityText}>
+              {isAvailable ? 'Passer en Indisponible' : 'Passer en Disponible'}
+            </Text>
+          </TouchableOpacity>
+          <View style={styles.cours}>
+            <Text style={styles.courseLabel}> Course en cours</Text>
+            <View style={styles.map}></View>
+            <TouchableOpacity
+              style={[
+                styles.cancelButton,
+              ]}
+              activeOpacity={0.8}
+            ><Text style={styles.cancelText}>Terminer</Text></TouchableOpacity>
+          </View>
+        </Animated.ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f9f9f9',
   },
   container: {
     flex: 1,
+  },
+  scrollContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 10,
+    paddingBottom: 30,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#222',
-    marginBottom: 15,
+    color: 'rgb(255,255,255)',
+    marginBottom: 10,
   },
   subtitle: {
     fontSize: 18,
-    marginBottom: 15,
+    marginBottom: 10,
     color: '#555',
   },
   statusAvailable: {
@@ -104,14 +128,13 @@ const styles = StyleSheet.create({
   cours: {
     backgroundColor: '#fff',
     marginTop: 20,
-    padding: 20,
+    padding: 10,
     borderRadius: 10,
     width: '100%',
-    height: '70%',
     elevation: 6,
   },
   courseLabel: {
-    marginTop: 10,
+    marginTop: 5,
     fontSize: 18,
     marginBottom: 10,
     color: '#666',
@@ -120,10 +143,10 @@ const styles = StyleSheet.create({
   },
   map: {
     width: '100%',
-    height: '75%',
+    height: '400',
     backgroundColor: 'rgba(46, 161, 81, 0.88)',
     borderRadius: 10,
-    marginBottom : 10,
+    marginBottom: 10,
   },
   cancelButton: {
     backgroundColor: '#FF4D4F',

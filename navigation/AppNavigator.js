@@ -5,7 +5,8 @@ import { SafeAreaView, StyleSheet } from 'react-native';
 import LoginScreen from '../screens/auth/LoginScreen'; // Utilisez l'écran de connexion unique
 import DriverTabNavigator from './DriverTabNavigator';
 import { AuthContext } from '../context/AuthContext';
-import { UserStackNavigator } from './UserTabNavigator';
+import UserTabNavigator from './UserTabNavigator';
+
 
 const Stack = createStackNavigator();
 
@@ -33,7 +34,7 @@ const AppNavigator = () => {
           userType === 'driver' ? (
             <DriverTabNavigator />
           ) : (
-            <UserStackNavigator/>
+            <UserTabNavigator/>
           )
         ) : (
           <AuthNavigator />

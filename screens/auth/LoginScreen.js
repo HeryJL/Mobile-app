@@ -33,9 +33,7 @@ const LoginScreen = ({ navigation }) => {
     
     try {
       const userType = await login(email, password);
-      if (userType === 'user') {
-        navigation.navigate('UserHome');
-      }
+      
     } catch (error) {
       triggerShake();
       alert(error.message);
@@ -92,11 +90,11 @@ const LoginScreen = ({ navigation }) => {
           transform: [{ translateX: shakeAnimation }]
         }]}>
           <View style={styles.inputContainer}>
-            <Ionicons name="mail" size={22} color="#ffffff" style={styles.icon} />
+            <Ionicons name="mail" size={22} color="rgb(44, 44, 44)" style={styles.icon} />
             <TextInput
               style={styles.input}
               placeholder="Adresse email"
-              placeholderTextColor="#e2e8f0"
+              placeholderTextColor='rgb(100, 100, 100)'
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -106,11 +104,11 @@ const LoginScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed" size={22} color="#ffffff" style={styles.icon} />
+            <Ionicons name="lock-closed" size={22} color="rgb(44, 44, 44)" style={styles.icon} />
             <TextInput
               style={styles.input}
               placeholder="Mot de passe"
-              placeholderTextColor="#e2e8f0"
+              placeholderTextColor='rgb(100, 100, 100)'
               value={password}
               onChangeText={setPassword}
               secureTextEntry={secureEntry}
@@ -123,7 +121,7 @@ const LoginScreen = ({ navigation }) => {
               <Ionicons
                 name={secureEntry ? "eye-off" : "eye"}
                 size={22}
-                color="#e2e8f0"
+                color='rgb(80, 78, 78)'
               />
             </TouchableOpacity>
           </View>
@@ -163,7 +161,7 @@ const LoginScreen = ({ navigation }) => {
 
           <TouchableOpacity 
             style={styles.signupButton}
-            onPress={() => navigation.navigate('Signup')}
+            //onPress={() => navigation.navigate('Signup')}
             activeOpacity={0.7}
           >
             <Text style={styles.signupText}>Créer un compte</Text>
@@ -218,7 +216,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e293b', // Darker contrast for inputs
+    backgroundColor: '#fff', // Darker contrast for inputs
     borderRadius: 12,
     paddingHorizontal: 18,
     paddingVertical: 16,
@@ -232,7 +230,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#ffffff',
+    color: 'rgb(0, 0, 0)',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   eyeButton: {

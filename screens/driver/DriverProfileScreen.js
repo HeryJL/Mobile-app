@@ -24,7 +24,7 @@ const DriverProfileScreen = () => {
 
   return (
     <LinearGradient
-      colors={['#0f172a', '#1e293b']}
+      colors={['#74c7ec', '#60a5fa']}
       style={styles.container}
     >
       <SafeAreaView style={styles.safeArea}>
@@ -41,7 +41,7 @@ const DriverProfileScreen = () => {
               <View style={styles.avatarBorder} />
             </View>
             <Text style={styles.title}>{user?.firstName || 'Profil'} {user?.lastName}</Text>
-            <Text style={styles.subtitle}>Conducteur MoraTaxi</Text>
+            
           </View>
 
           {user && (
@@ -193,12 +193,12 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
   },
   profileCard: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#fff',
+    elevation: 3,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#334155',
+  
   },
   infoItem: {
     flexDirection: 'row',
@@ -215,21 +215,20 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     fontSize: 16,
-    color: '#f8fafc',
+    color: 'rgba(0, 0, 0, 0.71)',
     fontWeight: '600',
   },
   statsCard: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#334155',
+ 
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#f8fafc',
+    color: 'rgba(0, 0, 0, 0.71)',
     marginBottom: 15,
   },
   statsGrid: {
@@ -239,7 +238,8 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '48%',
-    backgroundColor: '#0f172a',
+    backgroundColor: 'rgb(255, 255, 255)',
+    
     borderRadius: 12,
     padding: 15,
     marginBottom: 15,
@@ -256,12 +256,12 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#f8fafc',
+    color: 'rgba(0, 0, 0, 0.93)',
     marginBottom: 2,
   },
   statLabel: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: 'rgba(0,0,0,0.93)',
   },
   logoutButton: {
     borderRadius: 12,
