@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import UserHomeScreen from '../screens/user/UserHomeScreen';
 import UserRouteScreen from '../screens/user/UserRouteScreen'; // Assurez-vous que ce fichier existe
 import UserProfileScreen from '../screens/user/UserProfilScreen';
+import MapScreen from '../screens/user/Mapscreen';
+import MapAutocompleteScreen from '../screens/user/Mapscreen';
  // Assurez-vous que ce fichier existe
 
 const Tab = createBottomTabNavigator();
@@ -43,7 +45,7 @@ const UserTabNavigator = () => {
       })}
     >
       <Tab.Screen name="Accueil" component={UserHomeScreen} />
-      <Tab.Screen name="Itinéraire" component={UserRouteScreen} />
+      <Tab.Screen name="Itinéraire" component={MapAutocompleteScreen} />
       <Tab.Screen name="Profil" component={UserProfileScreen} />
     </Tab.Navigator>
   );
