@@ -3,7 +3,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import UserHomeScreen from '../screens/user/UserHomeScreen';
 import UserRouteScreen from '../screens/user/UserRouteScreen'; // Assurez-vous que ce fichier existe
-import UserProfileScreen from '../screens/user/UserProfileScreen'; // Assurez-vous que ce fichier existe
+import UserProfileScreen from '../screens/user/UserProfilScreen';
+ // Assurez-vous que ce fichier existe
 
 const Tab = createBottomTabNavigator();
 
@@ -43,7 +44,7 @@ const UserTabNavigator = () => {
     >
       <Tab.Screen name="Accueil" component={UserHomeScreen} />
       <Tab.Screen name="Itinéraire" component={UserRouteScreen} />
-      <Tab.Screen name="Profil" component={UserHomeScreen} />
+      <Tab.Screen name="Profil" component={UserProfileScreen} />
     </Tab.Navigator>
   );
 };
