@@ -53,67 +53,49 @@ const UserHomeScreen = () => {
   };
 
   return (
-    React.createElement(
-      SafeAreaView,
-      { style: [styles.safeArea, { paddingTop: insets.top }] },
-      // Header Section (Updated to match the design in the image)
-      React.createElement(
-        View,
-        { style: styles.headerContainer },
-        React.createElement(Text, { style: styles.greetingText }, 'Bonjour,\nBesoin de prendre la route ?'),
-        // Tabs Section
-        React.createElement(
-          View,
-          { style: styles.tabContainer },
-          React.createElement(
-            TouchableOpacity,
-            { style: styles.tabActive },
-            React.createElement(
-              View,
-              { style: styles.tabContent },
-              React.createElement(Text, { style: styles.tabIcon }, '📍'),
-              React.createElement(Text, { style: styles.tabText }, 'Réserver')
-            )
-          ),
-          React.createElement(
-            TouchableOpacity,
-            { style: styles.tabInactive },
-            React.createElement(
-              View,
-              { style: styles.tabContent },
-              React.createElement(Text, { style: styles.tabIcon }, '🚗'),
-              React.createElement(Text, { style: styles.tabText }, 'Véhicules')
-            )
-          )
-        )
-      ),
-      // Map Section
-      React.createElement(
-        View,
-        { style: styles.mapSection },
-        React.createElement(Text, { style: styles.sectionTitle }, 'Réserver une course'),
-        React.createElement(
-          MapView,
-          {
-            ref: mapRef, // Attach the ref to the MapView
-            provider: PROVIDER_DEFAULT, // Use OpenStreetMap as the provider
-            style: styles.map,
-            initialRegion: initialRegion,
-            customMapStyle: [],
-          },
-          location && React.createElement(Marker, {
-            coordinate: { latitude: initialRegion.latitude, longitude: initialRegion.longitude },
-            title: 'Votre position',
-          })
-        ),
-        // Recenter Button
-        React.createElement(
-          TouchableOpacity,
-          { style: styles.recenterButton, onPress: recenterMap },
-          React.createElement(Text, { style: styles.recenterButtonText }, 'Recentrer')
-        )
-      )
-    )
+    <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
+      {/* Header Section (Updated to match the design in the image) */}
+      <View style={styles.headerContainer}>
+        <Text style={styles.greetingText}>Bonjour,{'\n'}Besoin de prendre la route ?</Text>
+        {/* Tabs Section */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity style={styles.tabActive}>
+            <View style={styles.tabContent}>
+              <Text style={styles.tabIcon}>📍</Text>
+              <Text style={styles.tabText}>Réserver</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.tabInactive}>
+            <View style={styles.tabContent}>
+              <Text style={styles.tabIcon}>🚗</Text>
+              <Text style={styles.tabText}>Véhicules</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+      {/* Map Section */}
+      <View style={styles.mapSection}>
+        <Text style={styles.sectionTitle}>Réserver une course</Text>
+        <MapView
+          ref={mapRef} // Attach the ref to the MapView
+          provider={PROVIDER_DEFAULT} // Use OpenStreetMap as the provider
+          style={styles.map}
+          initialRegion={initialRegion}
+          customMapStyle={[]}
+        >
+          {location && (
+            <Marker
+              coordinate={{ latitude: initialRegion.latitude, longitude: initialRegion.longitude }}
+              title="Votre position"
+            />
+          )}
+        </MapView>
+        {/* Recenter Button */}
+        <TouchableOpacity style={styles.recenterButton} onPress={recenterMap}>
+          <Text style={styles.recenterButtonText}>Recentrer</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 };
 
