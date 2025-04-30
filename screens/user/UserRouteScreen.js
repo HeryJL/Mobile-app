@@ -194,8 +194,8 @@ const UserRouteScreen = () => {
               <Text style={styles.buttonText}>Confirmer</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelButton} onPress={handleCancelCreate}>
-              <Icon name="close" size={20} color="#fff" style={styles.buttonIcon} />
-              <Text style={styles.buttonText}>Annuler</Text>
+              <Icon name="close" size={20} color="#60a5fa" style={styles.buttonIcon} />
+              <Text style={styles.buttonCancelText}>Annuler</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -237,8 +237,8 @@ const UserRouteScreen = () => {
                 style={styles.modalCancelButton}
                 onPress={() => setIsDepartureModalVisible(false)}
               >
-                <Icon name="close" size={20} color="#fff" style={styles.buttonIcon} />
-                <Text style={styles.buttonText}>Fermer</Text>
+                <Icon name="close" size={20} color="#60a5fa" style={styles.buttonIcon} />
+                <Text style={styles.buttonClosetext}>Fermer</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -281,8 +281,8 @@ const UserRouteScreen = () => {
                 style={styles.modalCancelButton}
                 onPress={() => setIsArrivalModalVisible(false)}
               >
-                <Icon name="close" size={20} color="#fff" style={styles.buttonIcon} />
-                <Text style={styles.buttonText}>Fermer</Text>
+                <Icon name="close" size={20} color="#60a5fa" style={styles.buttonIcon} />
+                <Text style={styles.buttonClosetext}>Fermer</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -360,29 +360,35 @@ const styles = StyleSheet.create({
   confirmButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#60a5fa',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+   
   },
   cancelButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F44336',
+    backgroundColor: '#fff',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth:1,
+    borderColor:'#60a5fa'
   },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginLeft: 8,
+  },
+  buttonCancelText:{
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#60a5fa',
+    marginLeft: 8,
+  },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -443,20 +449,22 @@ const styles = StyleSheet.create({
   modalCancelButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F44336',
+    backgroundColor: '#fff',
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
-    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    borderWidth:1,
+    borderColor:'#60a5fa'
   },
-  buttonText: {
+
+  buttonClosetext :{
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: '#60a5fa',
     marginLeft: 8,
   },
   buttonIcon: {
