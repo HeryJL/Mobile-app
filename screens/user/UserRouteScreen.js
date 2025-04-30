@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, ActivityIndicator, Modal, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
+import { AuthContext } from '../../context/AuthContext';
+import Icon from '@expo/vector-icons/MaterialIcons';
 
 const UserRouteScreen = () => {
   const insets = useSafeAreaInsets();
   const [isDepartureModalVisible, setIsDepartureModalVisible] = useState(false);
   const [isArrivalModalVisible, setIsArrivalModalVisible] = useState(false);
-  const [departure, setDeparture] = useState('Ma position actuelle');
+  const [departure, setDeparture] = useState('');
   const [departureSuggestions, setDepartureSuggestions] = useState([]);
   const [departureLoading, setDepartureLoading] = useState(false);
   const [selectedDeparture, setSelectedDeparture] = useState(null);
@@ -17,8 +19,9 @@ const UserRouteScreen = () => {
   const [arrivalLoading, setArrivalLoading] = useState(false);
   const [selectedArrival, setSelectedArrival] = useState(null);
   const navigation = useNavigation();
+  const { user } = useContext(AuthContext);
 
-  // Récupérer la position actuelle de l'utilisateur au montage du composant
+  // Récupérer la position actuelle de l'utilisateur et le nom du lieu au montage
   useEffect(() => {
     (async () => {
       try {
@@ -30,17 +33,33 @@ const UserRouteScreen = () => {
 
         let location = await Location.getCurrentPositionAsync({});
         const { latitude, longitude } = location.coords;
+
+        // Reverse geocoding pour obtenir le nom du lieu
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
+          {
+            headers: {
+              'User-Agent': 'ReactNativeApp/1.0 (' + user?.email + ')',
+            },
+          }
+        );
+        const data = await response.json();
+        const placeName = data.display_name || 'Position actuelle';
+
+        setDeparture(placeName);
         setSelectedDeparture({
-          display_name: 'Ma position actuelle',
+          display_name: placeName,
           lat: latitude.toString(),
           lon: longitude.toString(),
         });
       } catch (error) {
-        console.error('Erreur de localisation:', error);
-        Alert.alert('Erreur', 'Impossible de récupérer votre position.');
+        console.error('Erreur de localisation ou reverse geocoding:', error);
+        Alert.alert('Erreur', 'Impossible de récupérer votre position ou le nom du lieu.');
+        setDeparture('Position actuelle');
+        setSelectedDeparture(null);
       }
     })();
-  }, []);
+  }, [user]);
 
   // Fonction pour récupérer les suggestions d'autocomplétion
   const fetchSuggestions = useCallback(async (text, setResults, setLoading) => {
@@ -56,7 +75,7 @@ const UserRouteScreen = () => {
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&addressdetails=1&limit=10`,
         {
           headers: {
-            'User-Agent': 'ReactNativeApp/1.0 (ramamonjisoaandrianina@gmail.com)',
+            'User-Agent': 'ReactNativeApp/1.0 (' + user?.email + ')',
           },
         }
       );
@@ -67,17 +86,17 @@ const UserRouteScreen = () => {
       setResults([]);
     }
     setLoading(false);
-  }, []);
+  }, [user]);
 
   // Gérer les suggestions pour le champ de départ
   useEffect(() => {
     const handler = setTimeout(() => {
-      if (departure !== 'Ma position actuelle') {
+      if (departure && departure !== selectedDeparture?.display_name) {
         fetchSuggestions(departure, setDepartureSuggestions, setDepartureLoading);
       }
     }, 300);
     return () => clearTimeout(handler);
-  }, [departure, fetchSuggestions]);
+  }, [departure, fetchSuggestions, selectedDeparture]);
 
   // Gérer les suggestions pour le champ d'arrivée
   useEffect(() => {
@@ -102,8 +121,11 @@ const UserRouteScreen = () => {
           latitude: parseFloat(selectedArrival.lat),
           longitude: parseFloat(selectedArrival.lon),
         },
+        distance: null,
+        routeCoordinates: [],
       };
-      setDeparture('Ma position actuelle');
+      console.log('New route created:', newRoute);
+      setDeparture(selectedDeparture.display_name);
       setArrival('');
       setSelectedArrival(null);
       setIsDepartureModalVisible(false);
@@ -117,7 +139,7 @@ const UserRouteScreen = () => {
 
   // Annuler la création de l'itinéraire
   const handleCancelCreate = () => {
-    setDeparture('Ma position actuelle');
+    setDeparture(selectedDeparture?.display_name || '');
     setArrival('');
     setSelectedArrival(null);
     setIsDepartureModalVisible(false);
@@ -145,30 +167,34 @@ const UserRouteScreen = () => {
       <View style={styles.container}>
         <Text style={styles.title}>Itinéraire</Text>
         <View style={styles.formContainer}>
-          <Text style={styles.modalTitle}>Nouvel itinéraire</Text>
+          <Text style={styles.modalTitle}>Les positions</Text>
           <TouchableOpacity
-            style={styles.inputTouchable}
+            style={styles.inputContainer}
             onPress={() => setIsDepartureModalVisible(true)}
           >
+            <Icon name="location-on" size={24} color="#1E88E5" style={styles.inputIcon} />
             <Text style={styles.inputText}>
-              {selectedDeparture ? selectedDeparture.display_name : 'Ma position actuelle'}
+              {selectedDeparture ? selectedDeparture.display_name : 'Chargement...'}
             </Text>
           </TouchableOpacity>
-          {departureLoading && <ActivityIndicator size="small" color="#0000ff" />}
+          {departureLoading && <ActivityIndicator size="small" color="#1E88E5" />}
           <TouchableOpacity
-            style={styles.inputTouchable}
+            style={styles.inputContainer}
             onPress={() => setIsArrivalModalVisible(true)}
           >
+            <Icon name="flag" size={24} color="#1E88E5" style={styles.inputIcon} />
             <Text style={styles.inputText}>
               {selectedArrival ? selectedArrival.display_name : 'Lieu d’arrivée'}
             </Text>
           </TouchableOpacity>
-          {arrivalLoading && <ActivityIndicator size="small" color="#0000ff" />}
+          {arrivalLoading && <ActivityIndicator size="small" color="#1E88E5" />}
           <View style={styles.modalActions}>
             <TouchableOpacity style={styles.confirmButton} onPress={handleSaveRoute}>
+              <Icon name="check" size={20} color="#fff" style={styles.buttonIcon} />
               <Text style={styles.buttonText}>Confirmer</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelButton} onPress={handleCancelCreate}>
+              <Icon name="close" size={20} color="#fff" style={styles.buttonIcon} />
               <Text style={styles.buttonText}>Annuler</Text>
             </TouchableOpacity>
           </View>
@@ -182,13 +208,16 @@ const UserRouteScreen = () => {
           <View style={styles.modalOverlay}>
             <View style={styles.suggestionsModalContent}>
               <Text style={styles.modalTitle}>Suggestions de départ</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Rechercher un lieu de départ"
-                value={departure}
-                onChangeText={setDeparture}
-              />
-              {departureLoading && <ActivityIndicator size="small" color="#0000ff" />}
+              <View style={styles.modalInputContainer}>
+                <Icon name="search" size={24} color="#1E88E5" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Rechercher un lieu de départ"
+                  value={departure}
+                  onChangeText={setDeparture}
+                />
+              </View>
+              {departureLoading && <ActivityIndicator size="small" color="#1E88E5" />}
               <View style={styles.suggestionsContainer}>
                 <FlatList
                   data={departureSuggestions}
@@ -198,6 +227,7 @@ const UserRouteScreen = () => {
                       style={styles.suggestionItemTouchable}
                       onPress={() => handleSelectDeparture(item)}
                     >
+                      <Icon name="location-pin" size={20} color="#1E88E5" style={styles.suggestionIcon} />
                       <Text style={styles.suggestionItem}>{item.display_name}</Text>
                     </TouchableOpacity>
                   )}
@@ -207,6 +237,7 @@ const UserRouteScreen = () => {
                 style={styles.modalCancelButton}
                 onPress={() => setIsDepartureModalVisible(false)}
               >
+                <Icon name="close" size={20} color="#fff" style={styles.buttonIcon} />
                 <Text style={styles.buttonText}>Fermer</Text>
               </TouchableOpacity>
             </View>
@@ -221,13 +252,16 @@ const UserRouteScreen = () => {
           <View style={styles.modalOverlay}>
             <View style={styles.suggestionsModalContent}>
               <Text style={styles.modalTitle}>Suggestions d’arrivée</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Rechercher un lieu d’arrivée"
-                value={arrival}
-                onChangeText={setArrival}
-              />
-              {arrivalLoading && <ActivityIndicator size="small" color="#0000ff" />}
+              <View style={styles.modalInputContainer}>
+                <Icon name="search" size={24} color="#1E88E5" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Rechercher un lieu d’arrivée"
+                  value={arrival}
+                  onChangeText={setArrival}
+                />
+              </View>
+              {arrivalLoading && <ActivityIndicator size="small" color="#1E88E5" />}
               <View style={styles.suggestionsContainer}>
                 <FlatList
                   data={arrivalSuggestions}
@@ -237,6 +271,7 @@ const UserRouteScreen = () => {
                       style={styles.suggestionItemTouchable}
                       onPress={() => handleSelectArrival(item)}
                     >
+                      <Icon name="location-pin" size={20} color="#1E88E5" style={styles.suggestionIcon} />
                       <Text style={styles.suggestionItem}>{item.display_name}</Text>
                     </TouchableOpacity>
                   )}
@@ -246,6 +281,7 @@ const UserRouteScreen = () => {
                 style={styles.modalCancelButton}
                 onPress={() => setIsArrivalModalVisible(false)}
               >
+                <Icon name="close" size={20} color="#fff" style={styles.buttonIcon} />
                 <Text style={styles.buttonText}>Fermer</Text>
               </TouchableOpacity>
             </View>
@@ -259,107 +295,172 @@ const UserRouteScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#f5f7fa',
   },
   container: {
     flex: 1,
     padding: 20,
     backgroundColor: '#fff',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '700',
     marginBottom: 20,
-    color: '#333',
+    color: '#1E88E5',
     textAlign: 'center',
   },
   formContainer: {
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     padding: 20,
-    borderRadius: 10,
-    elevation: 5,
+    borderRadius: 12,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     marginBottom: 20,
+    width: '100%',
+    height: '80%',
+    alignItems: 'center',
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: '600',
     marginBottom: 15,
     textAlign: 'center',
-    color: '#333',
+    color: '#1E88E5',
   },
-  inputTouchable: {
-    height: 40,
-    borderColor: '#ccc',
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    borderColor: '#e0e0e0',
     borderWidth: 1,
-    borderRadius: 5,
-    paddingHorizontal: 10,
+    borderRadius: 8,
+    paddingHorizontal: 12,
     marginBottom: 15,
-    justifyContent: 'center',
+    backgroundColor: '#fafafa',
+    width: '100%',
+  },
+  inputIcon: {
+    marginRight: 8,
   },
   inputText: {
+    flex: 1,
     fontSize: 16,
     color: '#333',
   },
   modalActions: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 15,
+    justifyContent: 'center',
+    gap: 20,
+    marginTop: 20,
   },
   confirmButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#4CAF50',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 5,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#F44336',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 5,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   suggestionsModalContent: {
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     padding: 20,
-    borderRadius: 10,
-    elevation: 5,
+    borderRadius: 12,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     width: '90%',
     maxHeight: '80%',
+    alignItems: 'center',
+  },
+  modalInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    borderColor: '#e0e0e0',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 10,
+    backgroundColor: '#fafafa',
+    width: '100%',
   },
   modalInput: {
-    height: 40,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    marginBottom: 10,
+    flex: 1,
     fontSize: 16,
-  },
-  suggestionItem: {
-    padding: 8,
-    borderBottomColor: '#ddd',
-    borderBottomWidth: 1,
-    fontSize: 16,
+    color: '#333',
   },
   suggestionItemTouchable: {
-    padding: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    width: '100%',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  suggestionIcon: {
+    marginRight: 8,
+  },
+  suggestionItem: {
+    fontSize: 16,
+    color: '#333',
   },
   suggestionsContainer: {
     flexGrow: 0,
     maxHeight: '60%',
+    width: '100%',
+    marginBottom: 10,
   },
   modalCancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#F44336',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 5,
-    marginTop: 15,
-    alignSelf: 'center',
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    marginLeft: 8,
+  },
+  buttonIcon: {
+    marginRight: 4,
   },
 });
 

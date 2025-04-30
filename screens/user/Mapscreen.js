@@ -2,23 +2,22 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Alert } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import Icon from '@expo/vector-icons/MaterialIcons';
 
 const MapScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { route: initialRouteData } = route.params;
-  const [routeData, setRouteData] = useState(initialRouteData); // Données de l'itinéraire (modifiable)
+  const [routeData, setRouteData] = useState(initialRouteData);
   const [distance, setDistance] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
-  const [editingMode, setEditingMode] = useState(null); // null, 'departure', ou 'arrival'
+  const [editingMode, setEditingMode] = useState(null);
   const mapRef = useRef(null);
 
-  // Calculer la distance et récupérer le trajet lorsque les coordonnées changent
   useEffect(() => {
     if (routeData.departureCoordinates && routeData.arrivalCoordinates) {
-      // Calculer la distance en ligne droite avec la formule de Haversine
       const calculateDistance = () => {
-        const R = 6371e3; // Rayon de la Terre en mètres
+        const R = 6371e3;
         const lat1 = (routeData.departureCoordinates.latitude * Math.PI) / 180;
         const lat2 = (routeData.arrivalCoordinates.latitude * Math.PI) / 180;
         const deltaLat = ((routeData.arrivalCoordinates.latitude - routeData.departureCoordinates.latitude) * Math.PI) / 180;
@@ -28,13 +27,12 @@ const MapScreen = () => {
           Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
           Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const dist = R * c; // Distance en mètres
-        return (dist / 1000).toFixed(2); // Convertir en kilomètres
+        const dist = R * c;
+        return (dist / 1000).toFixed(2);
       };
 
       setDistance(calculateDistance());
 
-      // Récupérer le trajet avec l'API OSRM
       const fetchRoute = async () => {
         try {
           const response = await fetch(
@@ -51,7 +49,6 @@ const MapScreen = () => {
             }));
             setRouteCoordinates(coords);
 
-            // Ajuster la carte pour afficher les deux marqueurs
             if (mapRef.current) {
               mapRef.current.fitToCoordinates([routeData.departureCoordinates, routeData.arrivalCoordinates], {
                 edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
@@ -61,7 +58,6 @@ const MapScreen = () => {
           }
         } catch (error) {
           Alert.alert('Erreur', 'Impossible de récupérer le trajet.');
-          // Repli sur une ligne droite si OSRM échoue
           setRouteCoordinates([routeData.departureCoordinates, routeData.arrivalCoordinates]);
         }
       };
@@ -70,13 +66,11 @@ const MapScreen = () => {
     }
   }, [routeData]);
 
-  // Fonction pour gérer le clic sur la carte en mode modification
   const handleMapPress = async (event) => {
-    if (!editingMode) return; // Ignorer les clics si aucun mode de modification n'est activé
+    if (!editingMode) return;
 
     const { latitude, longitude } = event.nativeEvent.coordinate;
 
-    // Récupérer le nom du lieu via Nominatim (géocodage inverse)
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
@@ -92,7 +86,6 @@ const MapScreen = () => {
       const data = await response.json();
       const displayName = data.display_name || 'Lieu inconnu';
 
-      // Mettre à jour les données de l'itinéraire selon le mode
       if (editingMode === 'departure') {
         setRouteData({
           ...routeData,
@@ -107,13 +100,12 @@ const MapScreen = () => {
         });
       }
 
-      setEditingMode(null); // Désactiver le mode modification après sélection
+      setEditingMode(null);
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de récupérer le nom du lieu. Vérifiez votre connexion.');
     }
   };
 
-  // Fonction pour enregistrer l'itinéraire et retourner à l'écran Accueil
   const handleSave = () => {
     navigation.navigate('MainTabs', {
       screen: 'Accueil',
@@ -127,7 +119,6 @@ const MapScreen = () => {
     });
   };
 
-  // Fonction pour annuler l'itinéraire avec confirmation
   const handleCancel = () => {
     Alert.alert(
       'Confirmer l\'annulation',
@@ -148,7 +139,6 @@ const MapScreen = () => {
     );
   };
 
-  // Fonction pour activer le mode modification de l'arrivée
   const handleEditArrival = () => {
     setEditingMode('arrival');
     Alert.alert(
@@ -158,7 +148,6 @@ const MapScreen = () => {
     );
   };
 
-  // Fonction pour activer le mode modification du départ
   const handleEditDeparture = () => {
     setEditingMode('departure');
     Alert.alert(
@@ -179,16 +168,14 @@ const MapScreen = () => {
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
         }}
-        onPress={handleMapPress} // Gérer les clics sur la carte
+        onPress={handleMapPress}
       >
-        {/* Marqueur pour le point de départ */}
         <Marker
           coordinate={routeData.departureCoordinates}
           title="Départ"
           description={routeData.departure}
           pinColor="green"
         />
-        {/* Marqueur pour le point d'arrivée */}
         {routeData.arrivalCoordinates && (
           <Marker
             coordinate={routeData.arrivalCoordinates}
@@ -197,36 +184,37 @@ const MapScreen = () => {
             pinColor="red"
           />
         )}
-        {/* Polyligne pour le trajet */}
         {routeCoordinates.length > 0 && (
           <Polyline
             coordinates={routeCoordinates}
-            strokeColor="#0000FF"
-            strokeWidth={3}
+            strokeColor="#1E88E5"
+            strokeWidth={4}
           />
         )}
       </MapView>
-      {/* Affichage de la distance */}
       {distance && (
         <View style={styles.distanceContainer}>
+          <Icon name="straighten" size={20} color="#1E88E5" style={styles.distanceIcon} />
           <Text style={styles.distanceText}>Distance: {distance} km</Text>
         </View>
       )}
-      {/* Bouton Enregistrer */}
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.buttonText}>Enregistrer</Text>
-      </TouchableOpacity>
-      {/* Bouton Annuler */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          <Icon name="save" size={20} color="#fff" style={styles.buttonIcon} />
+          <Text style={styles.buttonText}>Enregistrer</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.editArrivalButton} onPress={handleEditArrival}>
+          <Icon name="edit-location" size={20} color="#fff" style={styles.buttonIcon} />
+          <Text style={styles.buttonText}>Modifier Arrivée</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.editDepartureButton} onPress={handleEditDeparture}>
+          <Icon name="edit-location" size={20} color="#fff" style={styles.buttonIcon} />
+          <Text style={styles.buttonText}>Modifier Départ</Text>
+        </TouchableOpacity>
+      </View>
       <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+        <Icon name="close" size={20} color="#fff" style={styles.buttonIcon} />
         <Text style={styles.buttonText}>Annuler</Text>
-      </TouchableOpacity>
-      {/* Bouton Modifier Arrivée */}
-      <TouchableOpacity style={styles.editArrivalButton} onPress={handleEditArrival}>
-        <Text style={styles.buttonText}>Modifier Arrivée</Text>
-      </TouchableOpacity>
-      {/* Bouton Modifier Départ */}
-      <TouchableOpacity style={styles.editDepartureButton} onPress={handleEditDeparture}>
-        <Text style={styles.buttonText}>Modifier Départ</Text>
       </TouchableOpacity>
     </View>
   );
@@ -235,6 +223,7 @@ const MapScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f7fa',
   },
   map: {
     width: Dimensions.get('window').width,
@@ -242,56 +231,97 @@ const styles = StyleSheet.create({
   },
   distanceContainer: {
     position: 'absolute',
-    bottom: 170, // Ajusté pour éviter le chevauchement
+    bottom: 170,
     left: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    padding: 10,
-    borderRadius: 5,
+    backgroundColor: '#fff',
+    padding: 12,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  distanceIcon: {
+    marginRight: 8,
   },
   distanceText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#333',
   },
-  saveButton: {
+  buttonContainer: {
     position: 'absolute',
     bottom: 20,
     right: 20,
+    alignItems: 'flex-end',
+    gap: 10,
+  },
+  saveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#4CAF50',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 5,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     position: 'absolute',
     bottom: 20,
     left: 20,
     backgroundColor: '#F44336',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 5,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   editArrivalButton: {
-    position: 'absolute',
-    bottom: 70,
-    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FFA500',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 5,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   editDepartureButton: {
-    position: 'absolute',
-    bottom: 120,
-    right: 20,
-    backgroundColor: '#1E90FF',
-    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E88E5',
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 5,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   buttonText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#fff',
+    marginLeft: 8,
+  },
+  buttonIcon: {
+    marginRight: 4,
   },
 });
 
