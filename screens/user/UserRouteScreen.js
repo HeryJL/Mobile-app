@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, ActivityIndicator, Modal, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import * as Location from 'expo-location'; // For Expo location services
+import * as Location from 'expo-location';
 
 const UserRouteScreen = () => {
   const insets = useSafeAreaInsets();
@@ -18,7 +18,7 @@ const UserRouteScreen = () => {
   const [selectedArrival, setSelectedArrival] = useState(null);
   const navigation = useNavigation();
 
-  // Fetch user's current location on component mount
+  // Récupérer la position actuelle de l'utilisateur au montage du composant
   useEffect(() => {
     (async () => {
       try {
@@ -30,8 +30,6 @@ const UserRouteScreen = () => {
 
         let location = await Location.getCurrentPositionAsync({});
         const { latitude, longitude } = location.coords;
-
-        // Set default departure to current location
         setSelectedDeparture({
           display_name: 'Ma position actuelle',
           lat: latitude.toString(),
@@ -44,6 +42,7 @@ const UserRouteScreen = () => {
     })();
   }, []);
 
+  // Fonction pour récupérer les suggestions d'autocomplétion
   const fetchSuggestions = useCallback(async (text, setResults, setLoading) => {
     setLoading(true);
     if (text.length < 3) {
@@ -70,24 +69,25 @@ const UserRouteScreen = () => {
     setLoading(false);
   }, []);
 
+  // Gérer les suggestions pour le champ de départ
   useEffect(() => {
     const handler = setTimeout(() => {
       if (departure !== 'Ma position actuelle') {
         fetchSuggestions(departure, setDepartureSuggestions, setDepartureLoading);
       }
     }, 300);
-
     return () => clearTimeout(handler);
   }, [departure, fetchSuggestions]);
 
+  // Gérer les suggestions pour le champ d'arrivée
   useEffect(() => {
     const handler = setTimeout(() => {
       fetchSuggestions(arrival, setArrivalSuggestions, setArrivalLoading);
     }, 300);
-
     return () => clearTimeout(handler);
   }, [arrival, fetchSuggestions]);
 
+  // Enregistrer l'itinéraire et naviguer vers MapScreen
   const handleSaveRoute = () => {
     if (selectedDeparture && selectedArrival) {
       const newRoute = {
@@ -115,6 +115,7 @@ const UserRouteScreen = () => {
     }
   };
 
+  // Annuler la création de l'itinéraire
   const handleCancelCreate = () => {
     setDeparture('Ma position actuelle');
     setArrival('');
@@ -123,6 +124,7 @@ const UserRouteScreen = () => {
     setIsArrivalModalVisible(false);
   };
 
+  // Sélectionner un lieu de départ depuis les suggestions
   const handleSelectDeparture = (item) => {
     setDeparture(item.display_name);
     setSelectedDeparture(item);
@@ -130,6 +132,7 @@ const UserRouteScreen = () => {
     setIsDepartureModalVisible(false);
   };
 
+  // Sélectionner un lieu d'arrivée depuis les suggestions
   const handleSelectArrival = (item) => {
     setArrival(item.display_name);
     setSelectedArrival(item);

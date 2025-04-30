@@ -1,43 +1,62 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, Image, Alert } from 'react-native';
+import { Text, StyleSheet, View, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { PROVIDER_DEFAULT, Marker } from 'react-native-maps';
+import MapView, { PROVIDER_DEFAULT, Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { useRoute } from '@react-navigation/native';
 
 const UserHomeScreen = () => {
   const insets = useSafeAreaInsets();
+  const route = useRoute();
   const [location, setLocation] = useState(null);
-  const mapRef = useRef(null); // Reference to the MapView
+  const [savedRoute, setSavedRoute] = useState(null);
+  const mapRef = useRef(null);
 
+  // Récupérer la position actuelle de l'utilisateur au montage
   useEffect(() => {
     (async () => {
-      // Request permission to access location
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission refusée', 'L\'application a besoin de votre position pour afficher la carte.');
         return;
       }
 
-      // Get current position
       let currentLocation = await Location.getCurrentPositionAsync({});
       const userLocation = {
         latitude: currentLocation.coords.latitude,
         longitude: currentLocation.coords.longitude,
-        latitudeDelta: 0.005, // Zoom in closer
-        longitudeDelta: 0.005, // Zoom in closer
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
       };
       setLocation(userLocation);
 
-      // Animate map to the user's location
+      // Centrer la carte sur la position de l'utilisateur
       if (mapRef.current) {
         mapRef.current.animateToRegion(userLocation, 1000);
       }
     })();
   }, []);
 
-  // Fallback region if location is not available
+  // Mettre à jour l'itinéraire sauvegardé lorsque les paramètres de navigation changent
+  useEffect(() => {
+    if (route.params?.savedRoute) {
+      setSavedRoute(route.params.savedRoute);
+      // Ajuster la carte pour afficher les deux marqueurs de l'itinéraire
+      if (mapRef.current && route.params.savedRoute.departureCoordinates && route.params.savedRoute.arrivalCoordinates) {
+        mapRef.current.fitToCoordinates(
+          [route.params.savedRoute.departureCoordinates, route.params.savedRoute.arrivalCoordinates],
+          {
+            edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
+            animated: true,
+          }
+        );
+      }
+    }
+  }, [route.params]);
+
+  // Région par défaut si la position n'est pas disponible
   const fallbackRegion = {
-    latitude: 48.8566, // Paris as fallback
+    latitude: 48.8566, // Paris
     longitude: 2.3522,
     latitudeDelta: 0.005,
     longitudeDelta: 0.005,
@@ -45,7 +64,7 @@ const UserHomeScreen = () => {
 
   const initialRegion = location || fallbackRegion;
 
-  // Function to recenter the map on the user's location
+  // Recentrer la carte sur la position de l'utilisateur
   const recenterMap = () => {
     if (location && mapRef.current) {
       mapRef.current.animateToRegion(location, 1000);
@@ -53,67 +72,81 @@ const UserHomeScreen = () => {
   };
 
   return (
-    React.createElement(
-      SafeAreaView,
-      { style: [styles.safeArea, { paddingTop: insets.top }] },
-      // Header Section (Updated to match the design in the image)
-      React.createElement(
-        View,
-        { style: styles.headerContainer },
-        React.createElement(Text, { style: styles.greetingText }, 'Bonjour,\nBesoin de prendre la route ?'),
-        // Tabs Section
-        React.createElement(
-          View,
-          { style: styles.tabContainer },
-          React.createElement(
-            TouchableOpacity,
-            { style: styles.tabActive },
-            React.createElement(
-              View,
-              { style: styles.tabContent },
-              React.createElement(Text, { style: styles.tabIcon }, '📍'),
-              React.createElement(Text, { style: styles.tabText }, 'Réserver')
-            )
-          ),
-          React.createElement(
-            TouchableOpacity,
-            { style: styles.tabInactive },
-            React.createElement(
-              View,
-              { style: styles.tabContent },
-              React.createElement(Text, { style: styles.tabIcon }, '🚗'),
-              React.createElement(Text, { style: styles.tabText }, 'Véhicules')
-            )
-          )
-        )
-      ),
-      // Map Section
-      React.createElement(
-        View,
-        { style: styles.mapSection },
-        React.createElement(Text, { style: styles.sectionTitle }, 'Réserver une course'),
-        React.createElement(
-          MapView,
-          {
-            ref: mapRef, // Attach the ref to the MapView
-            provider: PROVIDER_DEFAULT, // Use OpenStreetMap as the provider
-            style: styles.map,
-            initialRegion: initialRegion,
-            customMapStyle: [],
-          },
-          location && React.createElement(Marker, {
-            coordinate: { latitude: initialRegion.latitude, longitude: initialRegion.longitude },
-            title: 'Votre position',
-          })
-        ),
-        // Recenter Button
-        React.createElement(
-          TouchableOpacity,
-          { style: styles.recenterButton, onPress: recenterMap },
-          React.createElement(Text, { style: styles.recenterButtonText }, 'Recentrer')
-        )
-      )
-    )
+    <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
+      {/* En-tête */}
+      <View style={styles.headerContainer}>
+        <Text style={styles.greetingText}>Bonjour,\nBesoin de prendre la route ?</Text>
+        {/* Onglets */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity style={styles.tabActive}>
+            <View style={styles.tabContent}>
+              <Text style={styles.tabIcon}>📍</Text>
+              <Text style={styles.tabText}>Réserver</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.tabInactive}>
+            <View style={styles.tabContent}>
+              <Text style={styles.tabIcon}>🚗</Text>
+              <Text style={styles.tabText}>Véhicules</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+      {/* Section de la carte */}
+      <View style={styles.mapSection}>
+        <Text style={styles.sectionTitle}>Réserver une course</Text>
+        <MapView
+          ref={mapRef}
+          provider={PROVIDER_DEFAULT}
+          style={styles.map}
+          initialRegion={initialRegion}
+          customMapStyle={[]}
+        >
+          {/* Marqueur pour la position actuelle si aucun itinéraire n'est sauvegardé */}
+          {!savedRoute && location && (
+            <Marker
+              coordinate={{ latitude: initialRegion.latitude, longitude: initialRegion.longitude }}
+              title="Votre position"
+              pinColor="blue"
+            />
+          )}
+          {/* Marqueurs et polyligne pour l'itinéraire sauvegardé */}
+          {savedRoute && (
+            <>
+              <Marker
+                coordinate={savedRoute.departureCoordinates}
+                title="Départ"
+                description={savedRoute.departure}
+                pinColor="green"
+              />
+              <Marker
+                coordinate={savedRoute.arrivalCoordinates}
+                title="Arrivée"
+                description={savedRoute.arrival}
+                pinColor="red"
+              />
+              {savedRoute.routeCoordinates.length > 0 && (
+                <Polyline
+                  coordinates={savedRoute.routeCoordinates}
+                  strokeColor="#0000FF"
+                  strokeWidth={3}
+                />
+              )}
+            </>
+          )}
+        </MapView>
+        {/* Affichage de la distance si un itinéraire est sauvegardé */}
+        {savedRoute && savedRoute.distance && (
+          <View style={styles.distanceContainer}>
+            <Text style={styles.distanceText}>Distance: {savedRoute.distance} km</Text>
+          </View>
+        )}
+        {/* Bouton Recentrer */}
+        <TouchableOpacity style={styles.recenterButton} onPress={recenterMap}>
+          <Text style={styles.recenterButtonText}>Recentrer</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 };
 
@@ -123,39 +156,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   headerContainer: {
-    backgroundColor: '#60a5fa', // Yellow background
+    backgroundColor: '#60a5fa',
     padding: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     marginBottom: 10,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 10,
-  },
-  logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  headerText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  infoIcon: {
-    padding: 5,
-  },
-  infoText: {
-    fontSize: 20,
   },
   greetingText: {
     fontSize: 18,
@@ -193,7 +198,7 @@ const styles = StyleSheet.create({
   mapSection: {
     marginHorizontal: 20,
     marginTop: 10,
-    flex: 1, // Allow the map section to take up remaining space
+    flex: 1,
   },
   sectionTitle: {
     fontSize: 18,
@@ -201,8 +206,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   map: {
-    flex: 1, // Make the map take up the full space of its container
-    minHeight: 400, // Ensure a larger minimum height
+    flex: 1,
+    minHeight: 400,
     borderRadius: 10,
   },
   recenterButton: {
@@ -218,6 +223,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#000',
+  },
+  distanceContainer: {
+    position: 'absolute',
+    bottom: 80,
+    left: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    padding: 10,
+    borderRadius: 5,
+  },
+  distanceText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

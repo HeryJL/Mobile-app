@@ -42,7 +42,7 @@ const TabNavigator = () => (
         fontSize: 12,
         fontWeight: '600',
       },
-      headerShown: false, // Masquer l’en-tête dans les tabs
+      headerShown: false,
     })}
   >
     <Tab.Screen name="Accueil" component={UserHomeScreen} />
@@ -57,12 +57,12 @@ const UserTabNavigator = () => (
     <Stack.Screen
       name="MainTabs"
       component={TabNavigator}
-      options={{ headerShown: false }} // Masque uniquement le header du screen tab
+      options={{ headerShown: false }}
     />
     <Stack.Screen
       name="MapScreen"
       component={MapScreen}
-      options={{ title: 'Carte' }} // Affiche un header ici si besoin
+      options={{ title: 'Carte' }}
     />
   </Stack.Navigator>
 );
