@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Alert } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 const MapScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const { route: routeData } = route.params;
+  const { route: initialRouteData } = route.params;
+  const [routeData, setRouteData] = useState(initialRouteData); // Données de l'itinéraire (modifiable)
   const [distance, setDistance] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
+  const [isEditing, setIsEditing] = useState(false); // Mode modification
   const mapRef = useRef(null);
 
-  // Calculer la distance et récupérer le trajet lorsque les coordonnées sont disponibles
+  // Calculer la distance et récupérer le trajet lorsque les coordonnées changent
   useEffect(() => {
     if (routeData.departureCoordinates && routeData.arrivalCoordinates) {
       // Calculer la distance en ligne droite avec la formule de Haversine
@@ -65,6 +67,42 @@ const MapScreen = () => {
     }
   }, [routeData]);
 
+  // Fonction pour gérer le clic sur la carte en mode modification
+  const handleMapPress = async (event) => {
+    if (!isEditing) return; // Ignorer les clics si le mode modification n'est pas activé
+
+    const { latitude, longitude } = event.nativeEvent.coordinate;
+
+    // Récupérer le nom du lieu via Nominatim (géocodage inverse)
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+        {
+          headers: {
+            'User-Agent': 'ReactNativeApp/1.0 (your@email.com)',
+          },
+        }
+      );
+      const data = await response.json();
+      const displayName = data.display_name || 'Lieu inconnu';
+
+      // Mettre à jour les données de l'itinéraire avec la nouvelle destination
+      setRouteData({
+        ...routeData,
+        arrival: displayName,
+        arrivalCoordinates: {
+          latitude,
+          longitude,
+        },
+      });
+
+      setIsEditing(false); // Désactiver le mode modification après sélection
+    } catch (error) {
+      console.error('Erreur Nominatim:', error);
+      Alert.alert('Erreur', 'Impossible de récupérer le nom du lieu.');
+    }
+  };
+
   // Fonction pour enregistrer l'itinéraire et retourner à l'écran Accueil
   const handleSave = () => {
     navigation.navigate('MainTabs', {
@@ -79,6 +117,37 @@ const MapScreen = () => {
     });
   };
 
+  // Fonction pour annuler l'itinéraire avec confirmation
+  const handleCancel = () => {
+    Alert.alert(
+      'Confirmer l\'annulation',
+      'Voulez-vous vraiment annuler cet itinéraire ?',
+      [
+        {
+          text: 'Non',
+          style: 'cancel',
+        },
+        {
+          text: 'Oui',
+          onPress: () => {
+            navigation.navigate('MainTabs', { screen: 'Itinéraire' });
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  // Fonction pour activer le mode modification
+  const handleEdit = () => {
+    setIsEditing(true);
+    Alert.alert(
+      'Modifier la destination',
+      'Cliquez sur la carte pour sélectionner une nouvelle destination.',
+      [{ text: 'OK' }]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <MapView
@@ -90,6 +159,7 @@ const MapScreen = () => {
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
         }}
+        onPress={handleMapPress} // Gérer les clics sur la carte
       >
         {/* Marqueur pour le point de départ */}
         <Marker
@@ -112,7 +182,7 @@ const MapScreen = () => {
           <Polyline
             coordinates={routeCoordinates}
             strokeColor="#0000FF"
-            strokeWidth={3}
+            strokeWidth={3} // Correction: Remplacé ] par }
           />
         )}
       </MapView>
@@ -125,6 +195,14 @@ const MapScreen = () => {
       {/* Bouton Enregistrer */}
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.buttonText}>Enregistrer</Text>
+      </TouchableOpacity>
+      {/* Bouton Annuler */}
+      <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+        <Text style={styles.buttonText}>Annuler</Text>
+      </TouchableOpacity>
+      {/* Bouton Modifier */}
+      <TouchableOpacity style={styles.editButton} onPress={handleEdit}>
+        <Text style={styles.buttonText}>Modifier</Text>
       </TouchableOpacity>
     </View>
   );
@@ -140,7 +218,7 @@ const styles = StyleSheet.create({
   },
   distanceContainer: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 120,
     left: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     padding: 10,
@@ -153,15 +231,33 @@ const styles = StyleSheet.create({
   saveButton: {
     position: 'absolute',
     bottom: 20,
-    alignSelf: 'center',
+    right: 20,
     backgroundColor: '#4CAF50',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  cancelButton: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    backgroundColor: '#F44336',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  editButton: {
+    position: 'absolute',
+    bottom: 70,
+    right: 20,
+    backgroundColor: '#FFA500',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 5,
   },
   buttonText: {
     fontSize: 16,
-    fontWeight: 'bold', // Correction ici
+    fontWeight: 'bold',
     color: '#fff',
   },
 });

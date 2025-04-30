@@ -56,7 +56,7 @@ const UserRouteScreen = () => {
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&addressdetails=1&limit=10`,
         {
           headers: {
-            'User-Agent': 'ReactNativeApp/1.0 (your@email.com)',
+            'User-Agent': 'ReactNativeApp/1.0 (ramamonjisoaandrianina@gmail.com)',
           },
         }
       );
