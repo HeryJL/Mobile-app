@@ -10,13 +10,14 @@ import {
     Platform,
     Animated,
     Easing,
-    Dimensions
+    Dimensions,
+    Alert
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthContext } from '../../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-
+import axios from 'axios';
 
 const { width } = Dimensions.get('window');
 
@@ -27,24 +28,47 @@ const SignupScreen = ({ navigation }) => {
     const [confpass, setConfPass] = useState('');
     const [phone, setPhone] = useState('');
     const [secureEntry, setSecureEntry] = useState(true);
-    const [confSecure,setConfSecure]= useState(true);
+    const [confSecure, setConfSecure] = useState(true);
     const [shakeAnimation] = useState(new Animated.Value(0));
-    const { login, isLoading } = useContext(AuthContext);
+    const { register, isLoading } = useContext(AuthContext);
     const insets = useSafeAreaInsets();
     const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
-    const handleLogin = async () => {
-        if (!email || !password) {
+    const handleSignUp = async () => {
+        if (!name || !email || !password || !confpass || !phone) {
+            Alert.alert("Erreur", "Tous les champs sont requis");
+            triggerShake();
+            return;
+        }
+
+        if (password !== confpass) {
+            Alert.alert("Erreur", "Les mots de passe ne correspondent pas");
             triggerShake();
             return;
         }
 
         try {
-            const userType = await login(email, password);
+            const response = await axios.post('http://192.168.0.59:5000/users/creerUsers', {
+                name,
+                email,
+                password,
+                phone
+            });
 
+            if (response.data.message === "Inscription réussie") {
+                Alert.alert("Succès", "Inscription réussie ! Vous pouvez maintenant vous connecter");
+                navigation.navigate('Login');
+            }
         } catch (error) {
+            console.error("Erreur d'inscription:", error);
+            
+            let errorMessage = "Erreur lors de l'inscription";
+            if (error.response) {
+                errorMessage = error.response.data.error || errorMessage;
+            }
+            
+            Alert.alert("Erreur", errorMessage);
             triggerShake();
-            alert(error.message);
         }
     };
 
@@ -55,7 +79,6 @@ const SignupScreen = ({ navigation }) => {
             useNativeDriver: true,
         }).start();
     }, [fadeAnim]);
-
 
     const triggerShake = () => {
         Animated.sequence([
@@ -85,7 +108,7 @@ const SignupScreen = ({ navigation }) => {
 
     return (
         <LinearGradient
-        colors={['#74c7ec', '#60a5fa']}// Light, soft blue gradient
+            colors={['#74c7ec', '#60a5fa']}
             style={styles.container}
         >
             <SafeAreaView style={styles.safeArea}>
@@ -114,26 +137,28 @@ const SignupScreen = ({ navigation }) => {
                                 <Ionicons name="person" size={22} color="rgb(44, 44, 44)" style={styles.icon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Nom"
+                                    placeholder="Nom complet"
                                     placeholderTextColor='rgb(100, 100, 100)'
                                     value={name}
                                     onChangeText={setName}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                    autoComplete="email"
+                                    autoCapitalize="words"
+                                    autoComplete="name"
                                 />
                             </View>
+
                             <View style={styles.inputContainer}>
                                 <Ionicons name="phone-portrait" size={22} color="rgb(44, 44, 44)" style={styles.icon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Numero telephone"
+                                    placeholder="Numéro de téléphone"
                                     placeholderTextColor='rgb(100, 100, 100)'
                                     value={phone}
                                     onChangeText={setPhone}
                                     keyboardType="phone-pad"
+                                    autoComplete="tel"
                                 />
                             </View>
+
                             <View style={styles.inputContainer}>
                                 <Ionicons name="mail" size={22} color="rgb(44, 44, 44)" style={styles.icon} />
                                 <TextInput
@@ -146,8 +171,8 @@ const SignupScreen = ({ navigation }) => {
                                     autoCapitalize="none"
                                     autoComplete="email"
                                 />
-                                
                             </View>
+
                             <View style={styles.inputContainer}>
                                 <Ionicons name="lock-closed" size={22} color="rgb(44, 44, 44)" style={styles.icon} />
                                 <TextInput
@@ -158,6 +183,7 @@ const SignupScreen = ({ navigation }) => {
                                     onChangeText={setPassword}
                                     secureTextEntry={secureEntry}
                                     autoCapitalize="none"
+                                    autoComplete="password"
                                 />
                                 <TouchableOpacity
                                     onPress={() => setSecureEntry(!secureEntry)}
@@ -170,6 +196,7 @@ const SignupScreen = ({ navigation }) => {
                                     />
                                 </TouchableOpacity>
                             </View>
+
                             <View style={styles.inputContainer}>
                                 <Ionicons name="lock-closed" size={22} color="rgb(44, 44, 44)" style={styles.icon} />
                                 <TextInput
@@ -193,15 +220,14 @@ const SignupScreen = ({ navigation }) => {
                                 </TouchableOpacity>
                             </View>
 
-
                             <TouchableOpacity
                                 style={styles.buttonContainer}
-                                onPress={handleLogin}
+                                onPress={handleSignUp}
                                 disabled={isLoading}
                                 activeOpacity={0.8}
                             >
                                 <LinearGradient
-                                    colors={['#3b82f6', '#2563eb']} // Lighter blue gradient for buttons
+                                    colors={['#3b82f6', '#2563eb']}
                                     start={{ x: 0, y: 0 }}
                                     end={{ x: 1, y: 0 }}
                                     style={styles.button}
@@ -225,7 +251,7 @@ const SignupScreen = ({ navigation }) => {
                                 onPress={() => navigation.navigate('Login')}
                                 activeOpacity={0.7}
                             >
-                                <Text style={styles.signupText}>Se connecter</Text>
+                                <Text style={styles.signupText}>Déjà un compte ? Se connecter</Text>
                             </TouchableOpacity>
                         </Animated.View>
                     </KeyboardAvoidingView>
@@ -274,7 +300,6 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         letterSpacing: 1,
     },
-
     form: {
         width: '100%',
     },
@@ -286,7 +311,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 18,
         paddingVertical: 10,
         marginBottom: 16,
-
     },
     icon: {
         marginRight: 12,
@@ -300,14 +324,6 @@ const styles = StyleSheet.create({
     eyeButton: {
         padding: 5,
         marginLeft: 10,
-    },
-    forgotPassword: {
-        alignSelf: 'flex-end',
-        marginBottom: 20,
-    },
-    forgotPasswordText: {
-        color: 'rgb(255, 255, 255)',
-        fontSize: 14,
     },
     buttonContainer: {
         marginTop: 10,
@@ -353,7 +369,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 10,
         shadowColor: '#3b82f6',
-
     },
     signupText: {
         color: '#ffffff',
@@ -362,4 +377,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default SignupScreen
+export default SignupScreen;
