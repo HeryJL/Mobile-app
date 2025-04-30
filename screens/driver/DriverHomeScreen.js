@@ -1,165 +1,142 @@
-import React, { useContext,useState,useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Animated } from 'react-native';
+import React, { useEffect, useState, useContext } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import MapView, { Marker, Polyline } from 'react-native-maps';
+import * as Location from 'expo-location';
+import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons, FontAwesome, Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const DriverHomeScreen = () => {
-  const [isAvailable, setIsAvailable] = useState(false);
-  const { user, logout } = useContext(AuthContext);
-  const toggleAvailability = () => {
-    setIsAvailable(!isAvailable);
-    console.log('Statut du conducteur:', isAvailable ? 'Indisponible' : 'Disponible');
+  const { user } = useContext(AuthContext);
+  const [driverLocation, setDriverLocation] = useState(null);
+  const [routeToPickup, setRouteToPickup] = useState([]);
+  const [routeToDestination, setRouteToDestination] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Coordonnées fictives (à remplacer si nécessaire)
+  const pickupPoint = { latitude: -19.8625, longitude: 47.0302 }; // point de départ du client
+  const dropoffPoint = { latitude: -19.8712, longitude: 47.0377 }; // point d'arrivée du client
+
+  const getDriverLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission refusée', 'Activez la localisation.');
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({});
+      const current = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+      setDriverLocation(current);
+      return current;
+    } catch (error) {
+      Alert.alert('Erreur GPS', error.message);
+    }
   };
 
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
-  const insets = useSafeAreaInsets();
+  const getRoute = async (from, to) => {
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${from.longitude},${from.latitude};${to.longitude},${to.latitude}?overview=full&geometries=geojson`;
+      const res = await axios.get(url);
+      const coords = res.data.routes[0].geometry.coordinates.map(([lng, lat]) => ({
+        latitude: lat,
+        longitude: lng,
+      }));
+      return coords;
+    } catch (err) {
+      Alert.alert('Erreur', 'Itinéraire non disponible');
+      return [];
+    }
+  };
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+    (async () => {
+      const current = await getDriverLocation();
+      if (current) {
+        const pathToPickup = await getRoute(current, pickupPoint);
+        const pathToDropoff = await getRoute(pickupPoint, dropoffPoint);
+        setRouteToPickup(pathToPickup);
+        setRouteToDestination(pathToDropoff);
+      }
+      setLoading(false);
+    })();
+  }, []);
 
   return (
-    <LinearGradient
-      colors={['#fff', '#fff']}
-      style={styles.container}
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <Animated.ScrollView
-          contentContainerStyle={[styles.scrollContainer, { paddingTop: insets.top }]}
-          style={{ opacity: fadeAnim }}
-        >
-          <Text style={styles.title}>Bienvenue {user.firstName} </Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Bienvenue {user?.firstName || 'Conducteur'}</Text>
 
-          <Text style={styles.subtitle}>
-            Statut actuel :
-            <Text style={isAvailable ? styles.statusAvailable : styles.statusUnavailable}>
-              {' '}{isAvailable ? 'Disponible' : 'Indisponible'}
-            </Text>
-          </Text>
-
-          <TouchableOpacity
-            style={[
-              styles.availabilityButton,
-              isAvailable ? styles.available : styles.unavailable,
-            ]}
-            onPress={toggleAvailability}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.availabilityText}>
-              {isAvailable ? 'Passer en Indisponible' : 'Passer en Disponible'}
-            </Text>
-          </TouchableOpacity>
-          <View style={styles.cours}>
-            <Text style={styles.courseLabel}> Course en cours</Text>
-            <View style={styles.map}></View>
-            <TouchableOpacity
-              style={[
-                styles.cancelButton,
-              ]}
-              activeOpacity={0.8}
-            ><Text style={styles.cancelText}>Terminer</Text></TouchableOpacity>
+        {loading || !driverLocation ? (
+          <ActivityIndicator size="large" color="#007BFF" />
+        ) : (
+          <View style={styles.mapContainer}>
+            <MapView
+              style={styles.map}
+              initialRegion={{
+                latitude: driverLocation.latitude,
+                longitude: driverLocation.longitude,
+                latitudeDelta: 0.015,
+                longitudeDelta: 0.015,
+              }}
+              showsUserLocation
+            >
+              
+              <Marker
+                coordinate={pickupPoint}
+                title="Départ client"
+                description="Lieu de départ"
+                pinColor="orange"
+              />
+              <Marker
+                coordinate={dropoffPoint}
+                title="Arrivée client"
+                description="Destination finale"
+                pinColor="red"
+              />
+              <Polyline coordinates={routeToPickup} strokeColor="blue" strokeWidth={4} />
+              <Polyline coordinates={routeToDestination} strokeColor="purple" strokeWidth={4} />
+            </MapView>
           </View>
-        </Animated.ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
+        )}
+
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={async () => {
+            setLoading(true);
+            const current = await getDriverLocation();
+            if (current) {
+              const pathToPickup = await getRoute(current, pickupPoint);
+              const pathToDropoff = await getRoute(pickupPoint, dropoffPoint);
+              setRouteToPickup(pathToPickup);
+              setRouteToDestination(pathToDropoff);
+            }
+            setLoading(false);
+          }}
+        >
+          <Text style={styles.refreshText}>↻ Rafraîchir</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-  },
-  scrollContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingBottom: 10,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: 'rgb(0, 0, 0)',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 18,
-    marginBottom: 10,
-    color: '#555',
-  },
-  statusAvailable: {
-    color: '#4CAF50',
-    fontWeight: 'bold',
-  },
-  statusUnavailable: {
-    color: '#F44336',
-    fontWeight: 'bold',
-  },
-  availabilityButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 50,
-    borderRadius: 14,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  available: {
-    backgroundColor: '#4CAF50',
-  },
-  unavailable: {
-    backgroundColor: '#F44336',
-  },
-  availabilityText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  cours: {
-    backgroundColor: '#fff',
-    marginTop: 20,
+  container: { flex: 1 },
+  content: { alignItems: 'center', padding: 16 },
+  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 10 },
+  mapContainer: { width: '100%', height: 600, borderRadius: 10, overflow: 'hidden' },
+  map: { flex: 1 },
+  refreshButton: {
+    marginTop: 10,
+    backgroundColor: '#007BFF',
     padding: 10,
-    borderRadius: 10,
-    width: '100%',
-    elevation: 6,
+    borderRadius: 8,
   },
-  courseLabel: {
-    marginTop: 5,
-    fontSize: 18,
-    marginBottom: 10,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  map: {
-    width: '100%',
-    height: '400',
-    backgroundColor: 'rgba(46, 161, 81, 0.88)',
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  cancelButton: {
-    backgroundColor: '#FF4D4F',
-    paddingVertical: 14,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-  },
-  cancelText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
+  refreshText: { color: '#fff', fontWeight: 'bold' },
 });
 
 export default DriverHomeScreen;

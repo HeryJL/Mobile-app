@@ -72,7 +72,7 @@ const UserHomeScreen = () => {
   };
 
   // Filter approved drivers
-  const approvedDrivers = mockDrivers.filter(driver => driver.status === 'approved');
+  //const approvedDrivers = mockDrivers.filter(driver => driver.status === 'approved');
 
   // Render driver item
   const renderDriverItem = ({ item }) => (
