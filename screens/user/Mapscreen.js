@@ -1,87 +1,44 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  View,
-  TextInput,
-  FlatList,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Dimensions,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Alert } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
-import * as Location from 'expo-location';
+import { useRoute, useNavigation } from '@react-navigation/native';
 
-export default function MapAutocompleteScreen() {
-  const [departureQuery, setDepartureQuery] = useState('');
-  const [arrivalQuery, setArrivalQuery] = useState('');
-  const [departureResults, setDepartureResults] = useState([]);
-  const [arrivalResults, setArrivalResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [departureLocation, setDepartureLocation] = useState(null);
-  const [arrivalLocation, setArrivalLocation] = useState(null);
+const MapScreen = () => {
+  const route = useRoute();
+  const navigation = useNavigation();
+  const { route: initialRouteData } = route.params;
+  const [routeData, setRouteData] = useState(initialRouteData); // Données de l'itinéraire (modifiable)
   const [distance, setDistance] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
+  const [isEditing, setIsEditing] = useState(false); // Mode modification
   const mapRef = useRef(null);
 
-  // Get user's current location on mount
+  // Calculer la distance et récupérer le trajet lorsque les coordonnées changent
   useEffect(() => {
-    (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission refusée', 'L\'application a besoin de votre position.');
-        return;
-      }
-
-      let currentLocation = await Location.getCurrentPositionAsync({});
-      const userLocation = {
-        latitude: currentLocation.coords.latitude,
-        longitude: currentLocation.coords.longitude,
-      };
-      setDepartureLocation(userLocation);
-      setDepartureQuery('Votre position actuelle');
-
-      // Center map on user's location
-      if (mapRef.current) {
-        mapRef.current.animateToRegion(
-          {
-            ...userLocation,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          },
-          1000
-        );
-      }
-    })();
-  }, []);
-
-  // Calculate distance and fetch route when both locations are set
-  useEffect(() => {
-    if (departureLocation && arrivalLocation) {
-      // Calculate straight-line distance
+    if (routeData.departureCoordinates && routeData.arrivalCoordinates) {
+      // Calculer la distance en ligne droite avec la formule de Haversine
       const calculateDistance = () => {
-        const R = 6371e3; // Earth's radius in meters
-        const lat1 = (departureLocation.latitude * Math.PI) / 180;
-        const lat2 = (arrivalLocation.latitude * Math.PI) / 180;
-        const deltaLat = ((arrivalLocation.latitude - departureLocation.latitude) * Math.PI) / 180;
-        const deltaLon = ((arrivalLocation.longitude - departureLocation.longitude) * Math.PI) / 180;
+        const R = 6371e3; // Rayon de la Terre en mètres
+        const lat1 = (routeData.departureCoordinates.latitude * Math.PI) / 180;
+        const lat2 = (routeData.arrivalCoordinates.latitude * Math.PI) / 180;
+        const deltaLat = ((routeData.arrivalCoordinates.latitude - routeData.departureCoordinates.latitude) * Math.PI) / 180;
+        const deltaLon = ((routeData.arrivalCoordinates.longitude - routeData.departureCoordinates.longitude) * Math.PI) / 180;
 
         const a =
           Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
           Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const dist = R * c; // Distance in meters
-        return (dist / 1000).toFixed(2); // Convert to kilometers
+        const dist = R * c; // Distance en mètres
+        return (dist / 1000).toFixed(2); // Convertir en kilomètres
       };
 
       setDistance(calculateDistance());
 
-      // Fetch route using OSRM (Open Source Routing Machine)
+      // Récupérer le trajet avec l'API OSRM
       const fetchRoute = async () => {
         try {
           const response = await fetch(
-            `http://router.project-osrm.org/route/v1/driving/${departureLocation.longitude},${departureLocation.latitude};${arrivalLocation.longitude},${arrivalLocation.latitude}?overview=full&geometries=geojson`
+            `http://router.project-osrm.org/route/v1/driving/${routeData.departureCoordinates.longitude},${routeData.departureCoordinates.latitude};${routeData.arrivalCoordinates.longitude},${routeData.arrivalCoordinates.latitude}?overview=full&geometries=geojson`
           );
           const data = await response.json();
           if (data.routes && data.routes.length > 0) {
@@ -91,9 +48,9 @@ export default function MapAutocompleteScreen() {
             }));
             setRouteCoordinates(coords);
 
-            // Fit map to show both points
+            // Ajuster la carte pour afficher les deux marqueurs
             if (mapRef.current) {
-              mapRef.current.fitToCoordinates([departureLocation, arrivalLocation], {
+              mapRef.current.fitToCoordinates([routeData.departureCoordinates, routeData.arrivalCoordinates], {
                 edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
                 animated: true,
               });
@@ -101,36 +58,25 @@ export default function MapAutocompleteScreen() {
           }
         } catch (error) {
           console.error('Erreur OSRM:', error);
-          // Fallback to straight line
-          setRouteCoordinates([departureLocation, arrivalLocation]);
+          // Repli sur une ligne droite si OSRM échoue
+          setRouteCoordinates([routeData.departureCoordinates, routeData.arrivalCoordinates]);
         }
       };
 
       fetchRoute();
     }
-  }, [departureLocation, arrivalLocation]);
+  }, [routeData]);
 
-  const fetchSuggestions = async (text, type) => {
-    if (type === 'departure') {
-      setDepartureQuery(text);
-      if (text.length < 3) {
-        setDepartureResults([]);
-        return;
-      }
-    } else {
-      setArrivalQuery(text);
-      if (text.length < 3) {
-        setArrivalResults([]);
-        return;
-      }
-    }
+  // Fonction pour gérer le clic sur la carte en mode modification
+  const handleMapPress = async (event) => {
+    if (!isEditing) return; // Ignorer les clics si le mode modification n'est pas activé
 
-    setLoading(true);
+    const { latitude, longitude } = event.nativeEvent.coordinate;
+
+    // Récupérer le nom du lieu via Nominatim (géocodage inverse)
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-          text
-        )}&format=json&addressdetails=1&limit=5`,
+        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
         {
           headers: {
             'User-Agent': 'ReactNativeApp/1.0 (your@email.com)',
@@ -138,32 +84,68 @@ export default function MapAutocompleteScreen() {
         }
       );
       const data = await response.json();
-      if (type === 'departure') {
-        setDepartureResults(data);
-      } else {
-        setArrivalResults(data);
-      }
+      const displayName = data.display_name || 'Lieu inconnu';
+
+      // Mettre à jour les données de l'itinéraire avec la nouvelle destination
+      setRouteData({
+        ...routeData,
+        arrival: displayName,
+        arrivalCoordinates: {
+          latitude,
+          longitude,
+        },
+      });
+
+      setIsEditing(false); // Désactiver le mode modification après sélection
     } catch (error) {
       console.error('Erreur Nominatim:', error);
-      type === 'departure' ? setDepartureResults([]) : setArrivalResults([]);
+      Alert.alert('Erreur', 'Impossible de récupérer le nom du lieu.');
     }
-    setLoading(false);
   };
 
-  const handleSelect = (item, type) => {
-    const location = {
-      latitude: parseFloat(item.lat),
-      longitude: parseFloat(item.lon),
-    };
-    if (type === 'departure') {
-      setDepartureQuery(item.display_name);
-      setDepartureLocation(location);
-      setDepartureResults([]);
-    } else {
-      setArrivalQuery(item.display_name);
-      setArrivalLocation(location);
-      setArrivalResults([]);
-    }
+  // Fonction pour enregistrer l'itinéraire et retourner à l'écran Accueil
+  const handleSave = () => {
+    navigation.navigate('MainTabs', {
+      screen: 'Accueil',
+      params: {
+        savedRoute: {
+          ...routeData,
+          distance,
+          routeCoordinates,
+        },
+      },
+    });
+  };
+
+  // Fonction pour annuler l'itinéraire avec confirmation
+  const handleCancel = () => {
+    Alert.alert(
+      'Confirmer l\'annulation',
+      'Voulez-vous vraiment annuler cet itinéraire ?',
+      [
+        {
+          text: 'Non',
+          style: 'cancel',
+        },
+        {
+          text: 'Oui',
+          onPress: () => {
+            navigation.navigate('MainTabs', { screen: 'Itinéraire' });
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  // Fonction pour activer le mode modification
+  const handleEdit = () => {
+    setIsEditing(true);
+    Alert.alert(
+      'Modifier la destination',
+      'Cliquez sur la carte pour sélectionner une nouvelle destination.',
+      [{ text: 'OK' }]
+    );
   };
 
   return (
@@ -171,82 +153,60 @@ export default function MapAutocompleteScreen() {
       <MapView
         ref={mapRef}
         style={styles.map}
-        region={{
-          latitude: departureLocation ? departureLocation.latitude : -18.8792,
-          longitude: departureLocation ? departureLocation.longitude : 47.5079,
+        initialRegion={{
+          latitude: routeData.departureCoordinates.latitude,
+          longitude: routeData.departureCoordinates.longitude,
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
         }}
+        onPress={handleMapPress} // Gérer les clics sur la carte
       >
-        {departureLocation && (
+        {/* Marqueur pour le point de départ */}
+        <Marker
+          coordinate={routeData.departureCoordinates}
+          title="Départ"
+          description={routeData.departure}
+          pinColor="green"
+        />
+        {/* Marqueur pour le point d'arrivée */}
+        {routeData.arrivalCoordinates && (
           <Marker
-            coordinate={departureLocation}
-            title="Départ"
-            description={departureQuery}
-            pinColor="green"
-          />
-        )}
-        {arrivalLocation && (
-          <Marker
-            coordinate={arrivalLocation}
+            coordinate={routeData.arrivalCoordinates}
             title="Arrivée"
-            description={arrivalQuery}
+            description={routeData.arrival}
             pinColor="red"
           />
         )}
+        {/* Polyligne pour le trajet */}
         {routeCoordinates.length > 0 && (
           <Polyline
             coordinates={routeCoordinates}
             strokeColor="#0000FF"
-            strokeWidth={3}
+            strokeWidth={3} // Correction: Remplacé ] par }
           />
         )}
       </MapView>
-
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Lieu de départ (position actuelle)"
-          value={departureQuery}
-          onChangeText={(text) => fetchSuggestions(text, 'departure')}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Lieu d'arrivée"
-          value={arrivalQuery}
-          onChangeText={(text) => fetchSuggestions(text, 'arrival')}
-        />
-
-        {loading && <ActivityIndicator size="small" color="#0000ff" />}
-
-        {distance && (
-          <Text style={styles.distanceText}>
-            Distance: {distance} km
-          </Text>
-        )}
-
-        <FlatList
-          data={departureResults}
-          keyExtractor={(item) => `dep-${item.place_id}`}
-          renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => handleSelect(item, 'departure')}>
-              <Text style={styles.item}>{item.display_name}</Text>
-            </TouchableOpacity>
-          )}
-        />
-        <FlatList
-          data={arrivalResults}
-          keyExtractor={(item) => `arr-${item.place_id}`}
-          renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => handleSelect(item, 'arrival')}>
-              <Text style={styles.item}>{item.display_name}</Text>
-            </TouchableOpacity>
-          )}
-        />
-      </View>
+      {/* Affichage de la distance */}
+      {distance && (
+        <View style={styles.distanceContainer}>
+          <Text style={styles.distanceText}>Distance: {distance} km</Text>
+        </View>
+      )}
+      {/* Bouton Enregistrer */}
+      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <Text style={styles.buttonText}>Enregistrer</Text>
+      </TouchableOpacity>
+      {/* Bouton Annuler */}
+      <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+        <Text style={styles.buttonText}>Annuler</Text>
+      </TouchableOpacity>
+      {/* Bouton Modifier */}
+      <TouchableOpacity style={styles.editButton} onPress={handleEdit}>
+        <Text style={styles.buttonText}>Modifier</Text>
+      </TouchableOpacity>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -256,37 +216,50 @@ const styles = StyleSheet.create({
     width: Dimensions.get('window').width,
     height: Dimensions.get('window').height,
   },
-  searchContainer: {
+  distanceContainer: {
     position: 'absolute',
-    top: 40,
-    width: '90%',
-    alignSelf: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    bottom: 120,
+    left: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     padding: 10,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-  },
-  input: {
-    height: 45,
-    borderColor: '#aaa',
-    borderWidth: 1,
     borderRadius: 5,
-    paddingHorizontal: 10,
-    marginBottom: 5,
-  },
-  item: {
-    padding: 8,
-    borderBottomColor: '#ddd',
-    borderBottomWidth: 1,
   },
   distanceText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#000',
-    marginVertical: 10,
-    textAlign: 'center',
+  },
+  saveButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: '#4CAF50',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  cancelButton: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    backgroundColor: '#F44336',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  editButton: {
+    position: 'absolute',
+    bottom: 70,
+    right: 20,
+    backgroundColor: '#FFA500',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
   },
 });
+
+export default MapScreen;
