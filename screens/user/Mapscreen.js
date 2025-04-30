@@ -10,7 +10,7 @@ const MapScreen = () => {
   const [routeData, setRouteData] = useState(initialRouteData); // Données de l'itinéraire (modifiable)
   const [distance, setDistance] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
-  const [isEditing, setIsEditing] = useState(false); // Mode modification
+  const [editingMode, setEditingMode] = useState(null); // null, 'departure', ou 'arrival'
   const mapRef = useRef(null);
 
   // Calculer la distance et récupérer le trajet lorsque les coordonnées changent
@@ -40,6 +40,9 @@ const MapScreen = () => {
           const response = await fetch(
             `http://router.project-osrm.org/route/v1/driving/${routeData.departureCoordinates.longitude},${routeData.departureCoordinates.latitude};${routeData.arrivalCoordinates.longitude},${routeData.arrivalCoordinates.latitude}?overview=full&geometries=geojson`
           );
+          if (!response.ok) {
+            throw new Error(`Erreur HTTP: ${response.status}`);
+          }
           const data = await response.json();
           if (data.routes && data.routes.length > 0) {
             const coords = data.routes[0].geometry.coordinates.map(([lon, lat]) => ({
@@ -57,7 +60,7 @@ const MapScreen = () => {
             }
           }
         } catch (error) {
-          console.error('Erreur OSRM:', error);
+          Alert.alert('Erreur', 'Impossible de récupérer le trajet.');
           // Repli sur une ligne droite si OSRM échoue
           setRouteCoordinates([routeData.departureCoordinates, routeData.arrivalCoordinates]);
         }
@@ -69,7 +72,7 @@ const MapScreen = () => {
 
   // Fonction pour gérer le clic sur la carte en mode modification
   const handleMapPress = async (event) => {
-    if (!isEditing) return; // Ignorer les clics si le mode modification n'est pas activé
+    if (!editingMode) return; // Ignorer les clics si aucun mode de modification n'est activé
 
     const { latitude, longitude } = event.nativeEvent.coordinate;
 
@@ -83,23 +86,30 @@ const MapScreen = () => {
           },
         }
       );
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
       const data = await response.json();
       const displayName = data.display_name || 'Lieu inconnu';
 
-      // Mettre à jour les données de l'itinéraire avec la nouvelle destination
-      setRouteData({
-        ...routeData,
-        arrival: displayName,
-        arrivalCoordinates: {
-          latitude,
-          longitude,
-        },
-      });
+      // Mettre à jour les données de l'itinéraire selon le mode
+      if (editingMode === 'departure') {
+        setRouteData({
+          ...routeData,
+          departure: displayName,
+          departureCoordinates: { latitude, longitude },
+        });
+      } else if (editingMode === 'arrival') {
+        setRouteData({
+          ...routeData,
+          arrival: displayName,
+          arrivalCoordinates: { latitude, longitude },
+        });
+      }
 
-      setIsEditing(false); // Désactiver le mode modification après sélection
+      setEditingMode(null); // Désactiver le mode modification après sélection
     } catch (error) {
-      console.error('Erreur Nominatim:', error);
-      Alert.alert('Erreur', 'Impossible de récupérer le nom du lieu.');
+      Alert.alert('Erreur', 'Impossible de récupérer le nom du lieu. Vérifiez votre connexion.');
     }
   };
 
@@ -138,12 +148,22 @@ const MapScreen = () => {
     );
   };
 
-  // Fonction pour activer le mode modification
-  const handleEdit = () => {
-    setIsEditing(true);
+  // Fonction pour activer le mode modification de l'arrivée
+  const handleEditArrival = () => {
+    setEditingMode('arrival');
     Alert.alert(
       'Modifier la destination',
       'Cliquez sur la carte pour sélectionner une nouvelle destination.',
+      [{ text: 'OK' }]
+    );
+  };
+
+  // Fonction pour activer le mode modification du départ
+  const handleEditDeparture = () => {
+    setEditingMode('departure');
+    Alert.alert(
+      'Modifier le départ',
+      'Cliquez sur la carte pour sélectionner un nouveau point de départ.',
       [{ text: 'OK' }]
     );
   };
@@ -182,7 +202,7 @@ const MapScreen = () => {
           <Polyline
             coordinates={routeCoordinates}
             strokeColor="#0000FF"
-            strokeWidth={3} // Correction: Remplacé ] par }
+            strokeWidth={3}
           />
         )}
       </MapView>
@@ -200,9 +220,13 @@ const MapScreen = () => {
       <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
         <Text style={styles.buttonText}>Annuler</Text>
       </TouchableOpacity>
-      {/* Bouton Modifier */}
-      <TouchableOpacity style={styles.editButton} onPress={handleEdit}>
-        <Text style={styles.buttonText}>Modifier</Text>
+      {/* Bouton Modifier Arrivée */}
+      <TouchableOpacity style={styles.editArrivalButton} onPress={handleEditArrival}>
+        <Text style={styles.buttonText}>Modifier Arrivée</Text>
+      </TouchableOpacity>
+      {/* Bouton Modifier Départ */}
+      <TouchableOpacity style={styles.editDepartureButton} onPress={handleEditDeparture}>
+        <Text style={styles.buttonText}>Modifier Départ</Text>
       </TouchableOpacity>
     </View>
   );
@@ -218,7 +242,7 @@ const styles = StyleSheet.create({
   },
   distanceContainer: {
     position: 'absolute',
-    bottom: 120,
+    bottom: 170, // Ajusté pour éviter le chevauchement
     left: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
     padding: 10,
@@ -246,11 +270,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 5,
   },
-  editButton: {
+  editArrivalButton: {
     position: 'absolute',
     bottom: 70,
     right: 20,
     backgroundColor: '#FFA500',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+  },
+  editDepartureButton: {
+    position: 'absolute',
+    bottom: 120,
+    right: 20,
+    backgroundColor: '#1E90FF',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 5,
