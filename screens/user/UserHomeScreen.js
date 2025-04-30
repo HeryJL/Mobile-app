@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Text, StyleSheet, View, TouchableOpacity, Image, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { PROVIDER_DEFAULT, Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { AuthContext } from '../../context/AuthContext';
 
 const UserHomeScreen = () => {
   const insets = useSafeAreaInsets();
   const [location, setLocation] = useState(null);
+  const [taxis, setTaxis] = useState({})
   const mapRef = useRef(null); // Reference to the MapView
-
+  const { user } = useContext(AuthContext);
   useEffect(() => {
     (async () => {
       // Request permission to access location
@@ -27,11 +29,12 @@ const UserHomeScreen = () => {
         longitudeDelta: 0.005, // Zoom in closer
       };
       setLocation(userLocation);
-
+      const tax = await getNearbyTaxis(userLocation.longitude, userLocation.latitude, 2);
+      setTaxis(tax)
       // Animate map to the user's location
       if (mapRef.current) {
         mapRef.current.animateToRegion(userLocation, 1000);
-      }
+      } 7
     })();
   }, []);
 
@@ -122,16 +125,18 @@ const UserHomeScreen = () => {
           location && React.createElement(Marker, {
             coordinate: { latitude: initialRegion.latitude, longitude: initialRegion.longitude },
             title: 'Votre position',
-          })
-        ),
+          }),
+        
+          
         // Recenter Button
         React.createElement(
           TouchableOpacity,
           { style: styles.recenterButton, onPress: recenterMap },
           React.createElement(Text, { style: styles.recenterButtonText }, 'Recentrer')
         )
+        )
       )
-    )
+   )
   );
 };
 

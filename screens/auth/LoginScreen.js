@@ -33,7 +33,6 @@ const LoginScreen = ({ navigation }) => {
     
     try {
       const userType = await login(email, password);
-      
     } catch (error) {
       triggerShake();
       alert(error.message);

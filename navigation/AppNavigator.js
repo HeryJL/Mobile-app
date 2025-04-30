@@ -13,15 +13,12 @@ const Stack = createStackNavigator();
 
 // Conteneur pour l'écran de connexion unique
 const AuthNavigator = () => {
-    return ( <
-        Stack.Navigator screenOptions = {
-            { headerShown: false } } >
-        <
-        Stack.Screen name = "Login"
-        component = { LoginScreen }
-        /> { /* Vous pouvez ajouter d'autres écrans d'inscription ici */ } <
-        /Stack.Navigator>
-    );
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Login" component={LoginScreen} />
+      {/* Vous pouvez ajouter d'autres écrans d'inscription ici */}
+    </Stack.Navigator>
+  );
 };
 
 
@@ -29,34 +26,31 @@ const AuthNavigator = () => {
 
 // Gestion générale de la navigation
 const AppNavigator = () => {
-    const { user, userType } = useContext(AuthContext);
+  const { user, userType } = useContext(AuthContext);
 
-    return ( <
-        NavigationContainer >
-        <
-        SafeAreaView style = { styles.safeArea } >
-        <
-        NotificationScreen / > {
-            user ? (
-                userType === 'driver' ? ( <
-                    DriverTabNavigator / >
-                ) : ( <
-                    UserTabNavigator / >
-                )
-            ) : ( <
-                AuthNavigator / >
-            )
-        } <
-        /SafeAreaView> <
-        /NavigationContainer>
-    );
+  return (
+    <NavigationContainer>
+      <SafeAreaView style={styles.safeArea}>
+        <NotificationScreen />
+        {user ? (
+          userType === 'chauffeur' ? (
+            <DriverTabNavigator />
+          ) : (
+            <UserTabNavigator/>
+          )
+        ) : (
+          <AuthNavigator />
+        )}
+      </SafeAreaView>
+    </NavigationContainer>
+  );
 };
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: '#fff',
-    },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
 });
 
 export default AppNavigator;

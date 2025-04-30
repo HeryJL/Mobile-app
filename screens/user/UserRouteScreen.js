@@ -9,11 +9,27 @@ const UserRouteScreen = () => {
   const [arrival, setArrival] = useState('');
   const [departureTime, setDepartureTime] = useState('');
   const [savedRoutes, setSavedRoutes] = useState([]);
-
+  const { user } = useContext(AuthContext);
   const handleCreateRoutePress = () => {
     setIsModalVisible(true);
   };
 
+  const handleTaxiReservation = (taxi) => {
+    createRide({
+      clientId: user._id,
+      taxiId:taxi.id, 
+      startLocation, 
+      endLocation,
+      distanceKm: 2,
+      price: 100,
+      heure: "12:20"
+    }).then(() => {
+        Alert.alert('Réservation réussie!', `Taxi ${taxi.driverName} réservé.`);
+      })
+      .catch(() => {
+        Alert.alert('Erreur', 'Impossible de réserver ce taxi.');
+      });
+  };
   const handleSaveRoute = () => {
     if (departure && arrival && departureTime) {
       const newRoute = { id: String(Date.now()), departure, arrival, departureTime };
