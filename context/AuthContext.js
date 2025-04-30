@@ -1,7 +1,8 @@
 import React, { createContext, useState, useEffect } from 'react';
 import mockUsers from '../data/mockUsers';
 import mockDrivers from '../data/mockDrivers';
-import { loginUser } from '../services/authService';
+import { loginUser, register } from '../services/authService';
+import { getTaxiById } from '../services/taxi.service';
 
 export const AuthContext = createContext();
 
@@ -20,27 +21,23 @@ export const AuthProvider = ({ children }) => {
             const log = await loginUser({ email, password });
             setUser(log.user)
             setUserType(log.user.role);
-            // const foundUser = mockUsers.find(
-            //     user => user.email === email && user.password === password
-            // );
-
-            // if (foundUser) {
-            //     setUser(foundUser);
-            //     setUserType('user');
-            //     return 'user';
-            // }
-
-            // const foundDriver = mockDrivers.find(
-            //     driver => driver.email === email && driver.password === password
-            // );
-
-            // if (foundDriver) {
-            //     setUser(foundDriver);
-            //     setUserType('driver');
-            //     return 'driver';
-            // }
-
-            throw new Error('Identifiants incorrects.');
+            if(userType === "chauffeur") {
+                const taxi = await getTaxiById(log.user._id)
+                setUser({...user,taxi})
+            }
+        } catch (error) {
+            throw error;
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    const registre = async(name, email, password,phone) => {
+        setIsLoading(true);
+        try {
+            const log = await register({ name, email, password,phone });
+            console.log(log)
+            setUser(log.user)
+            setUserType(log.user.role);
         } catch (error) {
             throw error;
         } finally {
@@ -63,8 +60,10 @@ export const AuthProvider = ({ children }) => {
                 isLoading,
                 userType,
                 login,
+                registre,
                 logout,
-                userToken: user?.id, // Utiliser l'ID de l'utilisateur prédéfini comme token
+                userToken: user?._id, // Utiliser l'ID de l'utilisateur prédéfini comme token
+                userTaxi: user?.taxi?._id,
             }
         } > { children } </AuthContext.Provider>
     );

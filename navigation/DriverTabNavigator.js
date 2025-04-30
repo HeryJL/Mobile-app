@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons'; // Ou 'react-native-vector-icons/Ionicons' si sans Expo
 import DriverHomeScreen from '../screens/driver/DriverHomeScreen';
 import RideRequestsScreen from '../screens/driver/RideRequestsScreen';
 import DriverProfileScreen from '../screens/driver/DriverProfileScreen';
-
+import SendLocation from '../screens/SendLocation';
+import { AuthContext } from '../context/AuthContext';
+const {taxiId} = useContext(AuthContext)
 const Tab = createBottomTabNavigator();
-
 const DriverTabNavigator = () => {
-  return (
+  return (<>
+    <SendLocation taxiId={taxiId} />
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
@@ -45,7 +47,8 @@ const DriverTabNavigator = () => {
       <Tab.Screen name="Demandes" component={RideRequestsScreen} />
       <Tab.Screen name="Profil" component={DriverProfileScreen} />
     </Tab.Navigator>
-  );
+    </>);
+  
 };
 
 export default DriverTabNavigator;

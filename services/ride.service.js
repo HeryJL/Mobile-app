@@ -10,6 +10,11 @@ export const getAllRides = async () => {
   return response.data;
 };
 
+export const getUserRides = async (id) => {
+  const response = await api.get(`/rides/${id}`);
+  return response.data
+};
+
 export const updateRide = async (id, ride) => {
   const response = await api.put(`/rides/${id}`, ride);
   return response.data;
@@ -17,11 +22,11 @@ export const updateRide = async (id, ride) => {
 
 export const deleteRide = async (id) => {
   const response = await api.delete(`/rides/${id}`);
-  return response.data;
+  return response.data
 };
 
-async function getAddress(lat, lon) {
-  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+export const getAddress = async (coord) => {
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${coord[1]}&lon=${coord[0]}`;
   const res = await axios.get(url, {
       headers: { 'User-Agent': 'Node.js App' }
   });

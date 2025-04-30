@@ -1,14 +1,16 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Animated } from 'react-native';
 import { AuthContext } from '../../context/AuthContext';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, FontAwesome, Ionicons, Feather, AntDesign } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getUserRides,getAddress } from '../../services/ride.service';
 
 const UserProfileScreen = () => {
-  const { user, logout } = useContext(AuthContext);
+  const { user,userToken, logout } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const [historique, setHistorique] = useState([])
 
   React.useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -17,7 +19,11 @@ const UserProfileScreen = () => {
       useNativeDriver: true,
     }).start();
   }, [fadeAnim]);
-
+  useEffect(() => {
+    (async() => {
+      const data = await getUserRides(userToken)
+      setHistorique(data)})()
+  })
   const handleLogout = () => {
     logout();
   };
@@ -43,7 +49,7 @@ const UserProfileScreen = () => {
                 <Feather name="edit-2" size={18} color="#fff" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.title}>{user?.firstName || 'Utilisateur'} {user?.lastName}</Text>
+            <Text style={styles.title}>{user?.name || 'Utilisateur'}</Text>
             <Text style={styles.subtitle}>Membre depuis 2023</Text>
           </View>
 
@@ -103,17 +109,18 @@ const UserProfileScreen = () => {
                 <Text style={styles.seeAll}>Tout voir</Text>
               </TouchableOpacity>
             </View>
-            
-            <View style={styles.rideItem}>
-              <View style={styles.rideIcon}>
-                <Ionicons name="car-sport" size={20} color="#60a5fa" />
-              </View>
-              <View style={styles.rideDetails}>
-                <Text style={styles.rideRoute}>Gare de Lyon → Tour Eiffel</Text>
-                <Text style={styles.rideDate}>12 juin 2023 - 14:30</Text>
-              </View>
-              <Text style={styles.ridePrice}>€15,20</Text>
-            </View>
+            { historique && historique.map(histo => (
+              <View style={styles.rideItem} key={histo.id}>
+                <View style={styles.rideIcon}>
+                  <Ionicons name="car-sport" size={20} color="#60a5fa" />
+                </View>
+                <View style={styles.rideDetails}>
+                  <Text style={styles.rideRoute}>{histo.start} → {histo(histo.end)}</Text>
+                  <Text style={styles.rideDate}>12 juin 2023 - 14:30</Text>
+                </View>
+                <Text style={styles.ridePrice}>{histo.price}</Text>
+            </View>   
+            ))}
 
             <View style={styles.rideItem}>
               <View style={styles.rideIcon}>

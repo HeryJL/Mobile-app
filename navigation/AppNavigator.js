@@ -6,11 +6,8 @@ import LoginScreen from '../screens/auth/LoginScreen'; // Utilisez l'écran de c
 import DriverTabNavigator from './DriverTabNavigator';
 import { AuthContext } from '../context/AuthContext';
 import UserTabNavigator from './UserTabNavigator';
-<<<<<<< HEAD
 import NotificationScreen from './../screens/Notification';
-=======
 import SignupScreen from '../screens/auth/SignupcScreen';
->>>>>>> 12182486bda70231d053e6262503ede2a017a581
 
 
 const Stack = createStackNavigator();

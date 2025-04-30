@@ -1,27 +1,27 @@
 import axios from 'axios';
 import api from './api';
-export const getNearbyTaxis = async (lat: number, lng: number, radius = 2) => {
+export const getNearbyTaxis = async (lat, lng, radius = 2) => {
   const response = await api.get(`/location/nearby?lat=${lat}&lng=${lng}&radius=${radius}`);
   return response.data;
 };
 
-export const updateTaxiLocation = async (taxiId: string, latitude: number, longitude: number) => {
+export const updateTaxiLocation = async (taxiId, latitude, longitude) => {
   const response = await api.post('/location', { taxiId, latitude, longitude });
   return response.data;
 };
 
-export const getTaxiLocation = async (taxiId: string) => {
+export const getTaxiLocation = async (taxiId) => {
   const response = await api.get(`/location/${taxiId}`);
   return response.data;
 };
 
-export const deleteTaxiLocation = async (taxiId: string) => {
+export const deleteTaxiLocation = async (taxiId) => {
   const response = await api.delete(`/location/${taxiId}`);
   return response.data;
 };
 
 
-export const getLocationSuggestions = async (query: string) => {
+export const getLocationSuggestions = async (query) => {
   if (query.length < 3) {
     return [];
   }

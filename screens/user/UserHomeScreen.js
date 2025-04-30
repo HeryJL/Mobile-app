@@ -30,11 +30,12 @@ const UserHomeScreen = () => {
       };
       setLocation(userLocation);
       const tax = await getNearbyTaxis(userLocation.longitude, userLocation.latitude, 2);
+      console.log("taxi",tax)
       setTaxis(tax)
       // Animate map to the user's location
       if (mapRef.current) {
         mapRef.current.animateToRegion(userLocation, 1000);
-      } 7
+      } 
     })();
   }, []);
 
@@ -108,17 +109,16 @@ const UserHomeScreen = () => {
             coordinate: { latitude: initialRegion.latitude, longitude: initialRegion.longitude },
             title: 'Votre position',
           }),
-        
           
+        ),
         // Recenter Button
         React.createElement(
           TouchableOpacity,
           { style: styles.recenterButton, onPress: recenterMap },
           React.createElement(Text, { style: styles.recenterButtonText }, 'Recentrer')
         )
-        )
       )
-   )
+    )
   );
 };
 

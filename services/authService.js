@@ -14,9 +14,7 @@ export const loginUser = async(credentials) => {
     // const pushToken = registerForPushNotifications();
     // console.log(pushToken)
     // await updateUser(res.data.user._id, { pushToken })
-    console.log("123")
     await AsyncStorage.setItem('token', res.data.token);
-    console.log("456")
     return res.data;
 };
 export const getInfo = async(token) => {
