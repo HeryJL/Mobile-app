@@ -4,11 +4,14 @@ import { Ionicons } from '@expo/vector-icons'; // Ou 'react-native-vector-icons/
 import DriverHomeScreen from '../screens/driver/DriverHomeScreen';
 import RideRequestsScreen from '../screens/driver/RideRequestsScreen';
 import DriverProfileScreen from '../screens/driver/DriverProfileScreen';
+import { createStackNavigator } from '@react-navigation/stack';
+
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
 
-const DriverTabNavigator = () => {
-  return (
+const TabNavigator = () => (
+  
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
@@ -45,7 +48,16 @@ const DriverTabNavigator = () => {
       <Tab.Screen name="Demandes" component={RideRequestsScreen} />
       <Tab.Screen name="Profil" component={DriverProfileScreen} />
     </Tab.Navigator>
-  );
-};
+);
+
+const DriverTabNavigator = () => (
+  <Stack.Navigator>
+    <Stack.Screen
+      name="MainTabs"
+      component={TabNavigator}
+      options={{ headerShown: false }}
+    />
+  </Stack.Navigator>
+);
 
 export default DriverTabNavigator;
