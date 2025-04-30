@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Text, StyleSheet, View, TouchableOpacity, Image, Alert } from 'react-native';
+import { Text, StyleSheet, View, TouchableOpacity, FlatList, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { PROVIDER_DEFAULT, Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
+import mockDrivers from '../../data/mockDrivers'; // Assuming mockDrivers is in a separate file
 
 const UserHomeScreen = () => {
   const insets = useSafeAreaInsets();
   const [location, setLocation] = useState(null);
+  const [activeTab, setActiveTab] = useState('Réserver'); // State to track active tab
   const mapRef = useRef(null); // Reference to the MapView
 
   useEffect(() => {
@@ -52,20 +54,39 @@ const UserHomeScreen = () => {
     }
   };
 
+  // Filter approved drivers
+  const approvedDrivers = mockDrivers.filter(driver => driver.status === 'approved');
+
+  // Render driver item
+  const renderDriverItem = ({ item }) => (
+    <View style={styles.driverItem}>
+      <Text style={styles.driverName}>{`${item.firstName} ${item.lastName}`}</Text>
+      <Text style={styles.driverDetail}>Téléphone: {item.phoneNumber}</Text>
+      <Text style={styles.driverDetail}>Véhicule: {item.vehicleMake} ({item.vehicleLicensePlate})</Text>
+      <Text style={styles.driverDetail}>Permis: {item.driverLicense}</Text>
+    </View>
+  );
+
   return (
     <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
-      {/* Header Section (Updated to match the design in the image) */}
+      {/* Header Section */}
       <View style={styles.headerContainer}>
         <Text style={styles.greetingText}>Bonjour,{'\n'}Besoin de prendre la route ?</Text>
         {/* Tabs Section */}
         <View style={styles.tabContainer}>
-          <TouchableOpacity style={styles.tabActive}>
+          <TouchableOpacity
+            style={activeTab === 'Réserver' ? styles.tabActive : styles.tabInactive}
+            onPress={() => setActiveTab('Réserver')}
+          >
             <View style={styles.tabContent}>
               <Text style={styles.tabIcon}>📍</Text>
               <Text style={styles.tabText}>Réserver</Text>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.tabInactive}>
+          <TouchableOpacity
+            style={activeTab === 'Véhicules' ? styles.tabActive : styles.tabInactive}
+            onPress={() => setActiveTab('Véhicules')}
+          >
             <View style={styles.tabContent}>
               <Text style={styles.tabIcon}>🚗</Text>
               <Text style={styles.tabText}>Véhicules</Text>
@@ -73,28 +94,43 @@ const UserHomeScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
-      {/* Map Section */}
-      <View style={styles.mapSection}>
-        <Text style={styles.sectionTitle}>Réserver une course</Text>
-        <MapView
-          ref={mapRef} // Attach the ref to the MapView
-          provider={PROVIDER_DEFAULT} // Use OpenStreetMap as the provider
-          style={styles.map}
-          initialRegion={initialRegion}
-          customMapStyle={[]}
-        >
-          {location && (
-            <Marker
-              coordinate={{ latitude: initialRegion.latitude, longitude: initialRegion.longitude }}
-              title="Votre position"
+      {/* Content Section */}
+      {activeTab === 'Réserver' ? (
+        <View style={styles.mapSection}>
+          <Text style={styles.sectionTitle}>Réserver une course</Text>
+          <MapView
+            ref={mapRef}
+            provider={PROVIDER_DEFAULT}
+            style={styles.map}
+            initialRegion={initialRegion}
+            customMapStyle={[]}
+          >
+            {location && (
+              <Marker
+                coordinate={{ latitude: initialRegion.latitude, longitude: initialRegion.longitude }}
+                title="Votre position"
+              />
+            )}
+          </MapView>
+          <TouchableOpacity style={styles.recenterButton} onPress={recenterMap}>
+            <Text style={styles.recenterButtonText}>Recentrer</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.driversSection}>
+          <Text style={styles.sectionTitle}>Conducteurs disponibles</Text>
+          {approvedDrivers.length > 0 ? (
+            <FlatList
+              data={approvedDrivers}
+              renderItem={renderDriverItem}
+              keyExtractor={(item) => item.id}
+              style={styles.driverList}
             />
+          ) : (
+            <Text style={styles.noDriversText}>Aucun conducteur disponible</Text>
           )}
-        </MapView>
-        {/* Recenter Button */}
-        <TouchableOpacity style={styles.recenterButton} onPress={recenterMap}>
-          <Text style={styles.recenterButtonText}>Recentrer</Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -105,39 +141,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   headerContainer: {
-    backgroundColor: '#60a5fa', // Yellow background
+    backgroundColor: '#60a5fa',
     padding: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     marginBottom: 10,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 10,
-  },
-  logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  headerTextContainer: {
-    flex: 1,
-  },
-  headerText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  infoIcon: {
-    padding: 5,
-  },
-  infoText: {
-    fontSize: 20,
   },
   greetingText: {
     fontSize: 18,
@@ -175,7 +183,12 @@ const styles = StyleSheet.create({
   mapSection: {
     marginHorizontal: 20,
     marginTop: 10,
-    flex: 1, // Allow the map section to take up remaining space
+    flex: 1,
+  },
+  driversSection: {
+    marginHorizontal: 20,
+    marginTop: 10,
+    flex: 1,
   },
   sectionTitle: {
     fontSize: 18,
@@ -183,8 +196,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   map: {
-    flex: 1, // Make the map take up the full space of its container
-    minHeight: 400, // Ensure a larger minimum height
+    flex: 1,
+    minHeight: 400,
     borderRadius: 10,
   },
   recenterButton: {
@@ -200,6 +213,32 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#000',
+  },
+  driverList: {
+    flex: 1,
+  },
+  driverItem: {
+    backgroundColor: '#f9f9f9',
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10,
+    elevation: 2,
+  },
+  driverName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 5,
+  },
+  driverDetail: {
+    fontSize: 14,
+    color: '#333',
+  },
+  noDriversText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 20,
   },
 });
 
