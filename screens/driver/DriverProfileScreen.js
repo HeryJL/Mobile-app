@@ -24,7 +24,7 @@ const DriverProfileScreen = () => {
 
   return (
     <LinearGradient
-      colors={['#74c7ec', '#60a5fa']}
+    colors={['#74c7ec', '#60a5fa']}
       style={styles.container}
     >
       <SafeAreaView style={styles.safeArea}>
@@ -129,15 +129,10 @@ const DriverProfileScreen = () => {
             onPress={handleLogout}
             activeOpacity={0.8}
           >
-            <LinearGradient
-              colors={['#FF4D4F', '#FF6B6B']}
-              style={styles.logoutGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
+            <View style={styles.logoutContent}>
+              <Ionicons name="log-out" size={20} color="#FF4D4F" />
               <Text style={styles.logoutText}>Se déconnecter</Text>
-              <Ionicons name="log-out" size={20} color="white" />
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
         </Animated.ScrollView>
       </SafeAreaView>
@@ -264,25 +259,21 @@ const styles = StyleSheet.create({
     color: 'rgba(0,0,0,0.93)',
   },
   logoutButton: {
+    backgroundColor: '#fff',
     borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: '#FF4D4F',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
+    padding: 16,
+    alignItems: 'center',
+    elevation: 2,
   },
-  logoutGradient: {
-    paddingVertical: 16,
+  logoutContent: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
   },
   logoutText: {
-    color: 'white',
+    color: '#FF4D4F',
     fontWeight: '600',
     fontSize: 16,
-    marginRight: 10,
+    marginLeft: 10,
   },
 });
 

@@ -6,7 +6,11 @@ import LoginScreen from '../screens/auth/LoginScreen'; // Utilisez l'écran de c
 import DriverTabNavigator from './DriverTabNavigator';
 import { AuthContext } from '../context/AuthContext';
 import UserTabNavigator from './UserTabNavigator';
+<<<<<<< HEAD
 import NotificationScreen from './../screens/Notification';
+=======
+import SignupScreen from '../screens/auth/SignupcScreen';
+>>>>>>> 12182486bda70231d053e6262503ede2a017a581
 
 
 const Stack = createStackNavigator();
@@ -16,6 +20,7 @@ const AuthNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Signup" component={SignupScreen} />
       {/* Vous pouvez ajouter d'autres écrans d'inscription ici */}
     </Stack.Navigator>
   );

@@ -15,6 +15,7 @@ import {
 import { AuthContext } from '../../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import SignupScreen from './SignupcScreen';
 
 const { width } = Dimensions.get('window');
 
@@ -160,7 +161,7 @@ const LoginScreen = ({ navigation }) => {
 
           <TouchableOpacity 
             style={styles.signupButton}
-            //onPress={() => navigation.navigate('Signup')}
+            onPress={() => navigation.navigate('Signup')}
             activeOpacity={0.7}
           >
             <Text style={styles.signupText}>Créer un compte</Text>
@@ -215,13 +216,12 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff', // Darker contrast for inputs
+    backgroundColor: '#fff', 
     borderRadius: 12,
     paddingHorizontal: 18,
-    paddingVertical: 16,
+    paddingVertical: 10,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#334155',
+
   },
   icon: {
     marginRight: 12,
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   forgotPasswordText: {
-    color: '#60a5fa',
+    color: 'rgb(255, 255, 255)',
     fontSize: 14,
   },
   buttonContainer: {
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#334155',
   },
   dividerText: {
-    color: '#64748b',
+    color: '#334155',
     paddingHorizontal: 10,
     fontSize: 14,
   },
@@ -287,6 +287,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 10,
+    shadowColor: '#3b82f6',
+
   },
   signupText: {
     color: '#ffffff',
