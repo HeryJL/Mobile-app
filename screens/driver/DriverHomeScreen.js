@@ -26,7 +26,7 @@ const DriverHomeScreen = () => {
 
   return (
     <LinearGradient
-      colors={['#74c7ec', '#60a5fa']}
+      colors={['#fff', '#fff']}
       style={styles.container}
     >
       <SafeAreaView style={styles.safeArea}>
@@ -82,12 +82,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingBottom: 30,
+    paddingBottom: 10,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: 'rgb(255,255,255)',
+    color: 'rgb(0, 0, 0)',
     marginBottom: 10,
   },
   subtitle: {

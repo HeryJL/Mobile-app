@@ -35,7 +35,7 @@ const RideRequestsScreen = () => {
 
   return (
     <LinearGradient
-      colors={['#74c7ec', '#60a5fa']}
+      colors={['#f2f2f2', '#f2f2f2']}
       style={styles.container}
     >
       <SafeAreaView style={styles.safeArea}>
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 20,
     textAlign: 'center',
-    color: 'rgb(255,255,255)',
+    color: 'rgb(0, 0, 0)',
   },
   listContent: {
     paddingBottom: 20,
