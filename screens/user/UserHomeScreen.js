@@ -4,6 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE, Marker, Polyline, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import Icon from '@expo/vector-icons/MaterialIcons';
 
 const UserHomeScreen = () => {
   const insets = useSafeAreaInsets();
@@ -14,7 +15,6 @@ const UserHomeScreen = () => {
   const [showRouteDetails, setShowRouteDetails] = useState(false);
   const mapRef = useRef(null);
 
-  // Récupérer la position actuelle de l'utilisateur au montage
   useEffect(() => {
     (async () => {
       try {
@@ -43,14 +43,12 @@ const UserHomeScreen = () => {
     })();
   }, []);
 
-  // Mettre à jour l'itinéraire sauvegardé
   useEffect(() => {
     console.log('Route params in UserHomeScreen:', route.params);
     if (route.params?.savedRoute) {
       const { savedRoute } = route.params;
       console.log('Saved route in UserHomeScreen:', savedRoute);
 
-      // Parse coordinates to ensure they are numbers
       const parsedRoute = {
         ...savedRoute,
         departureCoordinates: {
@@ -67,9 +65,9 @@ const UserHomeScreen = () => {
               longitude: parseFloat(coord.longitude),
             }))
           : [],
+        reservation: savedRoute.reservation || null,
       };
 
-      // Validate coordinates
       if (
         isValidCoordinate(parsedRoute.departureCoordinates) &&
         isValidCoordinate(parsedRoute.arrivalCoordinates)
@@ -97,7 +95,6 @@ const UserHomeScreen = () => {
     }
   }, [route.params]);
 
-  // Région par défaut : Antananarivo, Madagascar
   const fallbackRegion = {
     latitude: -18.8792,
     longitude: 47.5079,
@@ -107,7 +104,6 @@ const UserHomeScreen = () => {
 
   const initialRegion = location || fallbackRegion;
 
-  // Modifier l'itinéraire
   const handleEditRoute = () => {
     if (savedRoute) {
       navigation.navigate('MapScreen', { route: savedRoute });
@@ -116,7 +112,6 @@ const UserHomeScreen = () => {
     }
   };
 
-  // Supprimer l'itinéraire
   const handleClearRoute = () => {
     Alert.alert(
       'Supprimer l’itinéraire',
@@ -127,7 +122,7 @@ const UserHomeScreen = () => {
           text: 'Oui',
           onPress: () => {
             setSavedRoute(null);
-            setShowRouteDetails(true);
+            setShowRouteDetails(false);
             if (location && mapRef.current) {
               mapRef.current.animateToRegion(location, 1000);
             } else {
@@ -140,12 +135,14 @@ const UserHomeScreen = () => {
     );
   };
 
-  // Basculer les détails de l'itinéraire
+  const handlePartir = () => {
+    navigation.navigate('MainTabs', { screen: 'Itinéraire' });
+  };
+
   const toggleRouteDetails = () => {
     setShowRouteDetails(!showRouteDetails);
   };
 
-  // Vérifier la validité des coordonnées
   const isValidCoordinate = (coord) => {
     const valid = (
       coord &&
@@ -158,8 +155,7 @@ const UserHomeScreen = () => {
     return valid;
   };
 
-  // Gestion des interactions avec les marqueurs dsgh
-  const handleMarkerPress = (type) => {
+leMarkerPress = (type) => {
     console.log(`${type} marker pressed`);
   };
 
@@ -170,7 +166,14 @@ const UserHomeScreen = () => {
   return (
     <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
       <View style={styles.headerContainer}>
-        <Text style={styles.greetingText}>Bonjour, prêt à rouler ?</Text>
+        <View style={styles.headerLeft}>
+          <Icon name="map" size={24} color="#fff" style={styles.headerIcon} />
+          <Text style={styles.greetingText}>Bonjour, prêt à rouler ?</Text>
+        </View>
+        <TouchableOpacity style={styles.partirButton} onPress={handlePartir}>
+          <Icon name="rocket" size={20} color="#fff" style={styles.partirButtonIcon} />
+          <Text style={styles.partirButtonText}>Partir</Text>
+        </TouchableOpacity>
       </View>
       <View style={styles.mapSection}>
         <MapView
@@ -180,8 +183,8 @@ const UserHomeScreen = () => {
           initialRegion={initialRegion}
           customMapStyle={[]}
           key={savedRoute ? savedRoute.id : 'no-route'}
-          showsUserLocation={true} // Show user location dot
-          showsMyLocationButton={true} // Show default recenter button
+          showsUserLocation={true}
+          showsMyLocationButton={true}
         >
           {!savedRoute && location && isValidCoordinate(location) && (
             <Marker
@@ -235,13 +238,13 @@ const UserHomeScreen = () => {
                 savedRoute.routeCoordinates.every(isValidCoordinate) ? (
                   <Polyline
                     coordinates={savedRoute.routeCoordinates}
-                    strokeColor="#0000FF"
+                    strokeColor="#1e90ff"
                     strokeWidth={4}
                   />
                 ) : (
                   <Polyline
                     coordinates={[savedRoute.departureCoordinates, savedRoute.arrivalCoordinates]}
-                    strokeColor="#0000FF"
+                    strokeColor="#1e90ff"
                     strokeWidth={4}
                     strokeDashPattern={[10, 10]}
                   />
@@ -254,11 +257,23 @@ const UserHomeScreen = () => {
             <Text style={styles.routeText}>Départ: {savedRoute.departure || 'Non spécifié'}</Text>
             <Text style={styles.routeText}>Arrivée: {savedRoute.arrival || 'Non spécifié'}</Text>
             <Text style={styles.routeText}>Distance: {savedRoute.distance || 'Non calculée'} km</Text>
+            {savedRoute.reservation && (
+              <>
+                <Text style={styles.reservationText}>
+                  Réservation: Taxi {savedRoute.reservation.model} ({savedRoute.reservation.licensePlate})
+                </Text>
+                <Text style={styles.reservationText}>
+                  Chauffeur: {savedRoute.reservation.driverName}
+                </Text>
+              </>
+            )}
             <View style={styles.routeActions}>
               <TouchableOpacity style={styles.editButton} onPress={handleEditRoute}>
+                <Icon name="edit" size={20} color="#fff" style={styles.buttonIcon} />
                 <Text style={styles.buttonText}>Modifier</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.clearButton} onPress={handleClearRoute}>
+                <Icon name="delete" size={20} color="#fff" style={styles.buttonIcon} />
                 <Text style={styles.buttonText}>Supprimer</Text>
               </TouchableOpacity>
             </View>
@@ -266,7 +281,15 @@ const UserHomeScreen = () => {
         )}
         {savedRoute && (
           <TouchableOpacity style={styles.toggleButton} onPress={toggleRouteDetails}>
-            <Text style={styles.buttonText}>{showRouteDetails ? 'Masquer' : 'Afficher'} Détails</Text>
+            <Icon
+              name={showRouteDetails ? 'visibility-off' : 'visibility'}
+              size={20}
+              color="#fff"
+              style={styles.buttonIcon}
+            />
+            <Text style={styles.buttonText}>
+              {showRouteDetails ? 'Masquer' : 'Afficher'} Détails
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -277,81 +300,166 @@ const UserHomeScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f5f7fa',
   },
   headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     backgroundColor: '#60a5fa',
-    padding: 10,
+    padding: 15,
     borderBottomLeftRadius: 10,
     borderBottomRightRadius: 10,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIcon: {
+    marginRight: 8,
   },
   greetingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  partirButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  partirButtonText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000',
+    fontWeight: '600',
+    color: '#fff',
+    marginLeft: 6,
+  },
+  partirButtonIcon: {
+    marginRight: 4,
   },
   mapSection: {
     flex: 1,
     marginHorizontal: 10,
     marginTop: 5,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   map: {
     flex: 1,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   routeDetails: {
     position: 'absolute',
     bottom: 80,
     left: 10,
     right: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    padding: 15,
-    borderRadius: 10,
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   routeText: {
     fontSize: 16,
-    marginBottom: 5,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 8,
+  },
+  reservationText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#555',
+    marginBottom: 8,
   },
   routeActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    gap: 20,
     marginTop: 10,
   },
   editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FFA500',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 5,
-  },
-  clearButton: {
-    backgroundColor: '#F44336',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 5,
-  },
-  toggleButton: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    backgroundColor: '#4CAF50',
     paddingVertical: 10,
     paddingHorizontal: 20,
-    borderRadius: 20,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F44336',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  toggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'absolute',
+    bottom: 20,
+    left: '50%',
+    transform: [{ translateX: -50 }],
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   buttonText: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#fff',
+    marginLeft: 8,
+  },
+  buttonIcon: {
+    marginRight: 4,
   },
   calloutTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#333',
     marginBottom: 2,
   },
   calloutContainer: {
     backgroundColor: '#fff',
     padding: 10,
-    borderRadius: 5,
+    borderRadius: 8,
     minWidth: 150,
     alignItems: 'center',
   },
