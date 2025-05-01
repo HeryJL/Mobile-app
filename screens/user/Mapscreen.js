@@ -48,7 +48,7 @@ const MapScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { route: initialRouteData } = route.params || {};
-
+  
   if (!initialRouteData || (!initialRouteData.departureCoordinates && !initialRouteData.arrivalCoordinates)) {
     console.error("Missing or invalid initial route data");
     useEffect(() => {
@@ -66,6 +66,9 @@ const MapScreen = () => {
   const [isTaxiModalVisible, setIsTaxiModalVisible] = useState(false);
   const [availableTaxis, setAvailableTaxis] = useState([]);
   const [isLoadingTaxis, setIsLoadingTaxis] = useState(false);
+  const [isConfirmationModalVisible, setIsConfirmationModalVisible] = useState(false);
+  const [selectedTaxiForReservation, setSelectedTaxiForReservation] = useState(null);
+  
   const mapRef = useRef(null);
 
   // Reusable Haversine distance calculation
@@ -75,7 +78,7 @@ const MapScreen = () => {
     const lat2 = (coord2.latitude * Math.PI) / 180;
     const deltaLat = ((coord2.latitude - coord1.latitude) * Math.PI) / 180;
     const deltaLon = ((coord2.longitude - coord1.longitude) * Math.PI) / 180;
-
+    
     const a =
       Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
       Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
@@ -87,7 +90,6 @@ const MapScreen = () => {
   useEffect(() => {
     if (routeData.departureCoordinates && routeData.arrivalCoordinates) {
       setDistance(calculateDistance(routeData.departureCoordinates, routeData.arrivalCoordinates));
-
       const fetchRoute = async () => {
         try {
           const response = await fetch(
@@ -99,15 +101,17 @@ const MapScreen = () => {
             throw new Error(`Erreur de l'API OSRM: ${response.status}`);
           }
           const data = await response.json();
+          
           if (data.routes && data.routes.length > 0) {
             const coords = data.routes[0].geometry.coordinates.map(([lon, lat]) => ({
               latitude: lat,
               longitude: lon,
             }));
             setRouteCoordinates(coords);
-
+            
             if (mapRef.current) {
               const allCoords = [routeData.departureCoordinates, routeData.arrivalCoordinates, ...coords];
+              
               if (allCoords.length > 1) {
                 mapRef.current.fitToCoordinates(allCoords, {
                   edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
@@ -125,8 +129,10 @@ const MapScreen = () => {
           } else {
             Alert.alert('Erreur', 'Aucun itinéraire trouvé pour les points sélectionnés.');
             setRouteCoordinates([routeData.departureCoordinates, routeData.arrivalCoordinates].filter(Boolean));
+            
             if (mapRef.current) {
               const fallbackCoords = [routeData.departureCoordinates, routeData.arrivalCoordinates].filter(Boolean);
+              
               if (fallbackCoords.length > 1) {
                 mapRef.current.fitToCoordinates(fallbackCoords, {
                   edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
@@ -146,8 +152,10 @@ const MapScreen = () => {
           console.error("Fetch route error:", error);
           Alert.alert('Erreur', `Impossible de récupérer le trajet: ${error.message}`);
           setRouteCoordinates([routeData.departureCoordinates, routeData.arrivalCoordinates].filter(Boolean));
+          
           if (mapRef.current) {
             const fallbackCoords = [routeData.departureCoordinates, routeData.arrivalCoordinates].filter(Boolean);
+            
             if (fallbackCoords.length > 1) {
               mapRef.current.fitToCoordinates(fallbackCoords, {
                 edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
@@ -164,12 +172,12 @@ const MapScreen = () => {
           }
         }
       };
-
       fetchRoute();
     } else if (routeData.departureCoordinates || routeData.arrivalCoordinates) {
       const singlePoint = routeData.departureCoordinates || routeData.arrivalCoordinates;
       setRouteCoordinates([singlePoint]);
       setDistance(null);
+      
       if (mapRef.current && singlePoint) {
         mapRef.current.animateToRegion({
           latitude: singlePoint.latitude,
@@ -182,12 +190,13 @@ const MapScreen = () => {
       setRouteCoordinates([]);
       setDistance(null);
     }
-
+    
     return () => {};
   }, [routeData]);
 
   const handleMarkerPress = (type) => {
     if (editingMode) return;
+    
     if (type === 'departure' && routeData.departureCoordinates) {
       setSelectedMarkerInfo({
         type: 'Départ',
@@ -218,11 +227,11 @@ const MapScreen = () => {
 
   const handleMapPress = async (event) => {
     if (!editingMode) return;
-
+    
     const { latitude, longitude } = event.nativeEvent.coordinate;
     const editingPointType = editingMode;
     setEditingMode(null);
-
+    
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
@@ -232,14 +241,16 @@ const MapScreen = () => {
           },
         }
       );
+      
       if (!response.ok) {
         const errorBody = await response.text();
         console.error(`Nominatim Error ${response.status}:`, errorBody);
         throw new Error(`Erreur de l'API Nominatim: ${response.status}`);
       }
+      
       const data = await response.json();
       const displayName = data.display_name || 'Lieu inconnu';
-
+      
       if (editingPointType === 'departure') {
         setRouteData({
           ...routeData,
@@ -266,11 +277,13 @@ const MapScreen = () => {
       Alert.alert('Attention', 'Veuillez définir le point de départ et d\'arrivée.');
       return;
     }
-
+    
     setIsLoadingTaxis(true);
+    
     try {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Filter available taxis and calculate distance from departure point
       const taxis = mockTaxis
         .filter(taxi => taxi.status === 'disponible')
@@ -278,6 +291,7 @@ const MapScreen = () => {
           ...taxi,
           distance: calculateDistance(routeData.departureCoordinates, taxi.coordinates),
         }));
+      
       setAvailableTaxis(taxis);
       setIsTaxiModalVisible(true);
     } catch (error) {
@@ -298,16 +312,17 @@ const MapScreen = () => {
         distance,
         routeCoordinates,
       };
-
+      
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
+      
       const mockReservation = {
         _id: `reservation-${Date.now()}`,
         ...reservationData,
       };
-
+      
       Alert.alert('Succès', `Réservation confirmée avec le taxi ${taxi.model} (${taxi.licensePlate})`);
-
+      
       navigation.navigate('MainTabs', {
         screen: 'Accueil',
         params: {
@@ -329,7 +344,10 @@ const MapScreen = () => {
       console.error('Error simulating reservation:', error);
       Alert.alert('Erreur', 'Impossible de confirmer la réservation.');
     }
+    
     setIsTaxiModalVisible(false);
+    setIsConfirmationModalVisible(false);
+    setSelectedTaxiForReservation(null);
   };
 
   const handleCancel = () => {
@@ -350,7 +368,13 @@ const MapScreen = () => {
   };
 
   const renderTaxiItem = ({ item }) => (
-    <View style={styles.taxiItem}>
+    <TouchableOpacity 
+      style={styles.taxiItem}
+      onPress={() => {
+        setSelectedTaxiForReservation(item);
+        setIsConfirmationModalVisible(true);
+      }}
+    >
       <Icon name="local-taxi" size={24} color="#60a5fa" style={styles.taxiIcon} />
       <View style={styles.taxiDetails}>
         <Text style={styles.taxiText}>Chauffeur: {item.driverId.name}</Text>
@@ -360,11 +384,7 @@ const MapScreen = () => {
         <Text style={styles.taxiText}>Couleur: {item.color}</Text>
         <Text style={styles.taxiText}>Distance: {item.distance} km</Text>
       </View>
-      <TouchableOpacity style={styles.reserveButton} onPress={() => handleTaxiSelect(item)}>
-        <Icon name="check" size={20} color="#fff" style={styles.buttonIcon} />
-        <Text style={styles.buttonText}>Réserver</Text>
-      </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -440,17 +460,26 @@ const MapScreen = () => {
         animationType="slide"
         transparent={true}
         visible={isTaxiModalVisible}
-        onRequestClose={() => setIsTaxiModalVisible(false)}
+        onRequestClose={() => {
+          setIsTaxiModalVisible(false);
+          setIsConfirmationModalVisible(false);
+          setSelectedTaxiForReservation(null);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.taxiModal}>
             <TouchableOpacity
               style={styles.closeIcon}
-              onPress={() => setIsTaxiModalVisible(false)}
+              onPress={() => {
+                setIsTaxiModalVisible(false);
+                setIsConfirmationModalVisible(false);
+                setSelectedTaxiForReservation(null);
+              }}
             >
               <Icon name="close" size={24} color="#333" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Taxis Disponibles</Text>
+            
             {isLoadingTaxis ? (
               <ActivityIndicator size="large" color="#60a5fa" />
             ) : availableTaxis.length === 0 ? (
@@ -467,8 +496,44 @@ const MapScreen = () => {
         </View>
       </Modal>
 
+      {/* Confirmation Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isConfirmationModalVisible}
+        onRequestClose={() => {
+          setIsConfirmationModalVisible(false);
+          setSelectedTaxiForReservation(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmationModal}>
+            <Text style={styles.confirmationText}>
+              Voulez-vous vraiment réserver le taxi {selectedTaxiForReservation?.model} ({selectedTaxiForReservation?.licensePlate}) ?
+            </Text>
+            <View style={styles.confirmationButtons}>
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={() => handleTaxiSelect(selectedTaxiForReservation)}
+              >
+                <Text style={styles.confirmButtonText}>Confirmer</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelConfirmButton}
+                onPress={() => {
+                  setIsConfirmationModalVisible(false);
+                  setSelectedTaxiForReservation(null);
+                }}
+              >
+                <Text style={styles.buttonCancleText}>Annuler</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {distance && !editingMode && !selectedMarkerInfo && (
-        <View style={styles.distanceContainer}>
+        <View style={styles.distanceTopLeft}>
           <Icon name="straighten" size={20} color="#1e90ff" style={styles.distanceIcon} />
           <Text style={styles.distanceText}>Distance: {distance} km</Text>
         </View>
@@ -577,19 +642,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 20,
   },
-  reserveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#4CAF50',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
   closeIcon: {
     position: 'absolute',
     top: 10,
@@ -623,9 +675,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
   },
-  distanceContainer: {
+  distanceTopLeft: {
     position: 'absolute',
-    bottom: 170,
+    top: 20,
     left: 20,
     backgroundColor: '#fff',
     padding: 12,
@@ -637,7 +689,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
-    zIndex: 1,
+    zIndex: 10,
   },
   distanceIcon: {
     marginRight: 8,
@@ -723,6 +775,47 @@ const styles = StyleSheet.create({
   },
   buttonIcon: {
     marginRight: 4,
+  },
+  confirmationModal: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    width: '80%',
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+  },
+  confirmationText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  confirmationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+  },
+  confirmButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  cancelConfirmButton: {
+    backgroundColor: '#f44336',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
   },
 });
 

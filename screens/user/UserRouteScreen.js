@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, ActivityIndicator, Modal, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  FlatList,
+  ActivityIndicator,
+  Modal,
+  Alert,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
@@ -21,7 +31,7 @@ const UserRouteScreen = () => {
   const navigation = useNavigation();
   const { user } = useContext(AuthContext);
 
-  // Récupérer la position actuelle de l'utilisateur et le nom du lieu au montage
+  // Récupérer la position actuelle de l'utilisateur au montage
   useEffect(() => {
     (async () => {
       try {
@@ -30,7 +40,6 @@ const UserRouteScreen = () => {
           Alert.alert('Permission refusée', 'L’accès à la localisation est nécessaire.');
           return;
         }
-
         let location = await Location.getCurrentPositionAsync({});
         const { latitude, longitude } = location.coords;
 
@@ -45,7 +54,6 @@ const UserRouteScreen = () => {
         );
         const data = await response.json();
         const placeName = data.display_name || 'Position actuelle';
-
         setDeparture(placeName);
         setSelectedDeparture({
           display_name: placeName,
@@ -63,16 +71,16 @@ const UserRouteScreen = () => {
 
   // Fonction pour récupérer les suggestions d'autocomplétion
   const fetchSuggestions = useCallback(async (text, setResults, setLoading) => {
-    setLoading(true);
     if (text.length < 3) {
       setResults([]);
       setLoading(false);
       return;
     }
 
+    setLoading(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&addressdetails=1&limit=10`,
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}%&format=json&addressdetails=1&limit=10`,
         {
           headers: {
             'User-Agent': 'ReactNativeApp/1.0 (' + user?.email + ')',
@@ -84,26 +92,27 @@ const UserRouteScreen = () => {
     } catch (error) {
       console.error('Erreur Nominatim:', error);
       setResults([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [user]);
 
-  // Gérer les suggestions pour le champ de départ
+  // Géstion des suggestions pour le départ
   useEffect(() => {
-    const handler = setTimeout(() => {
+    const timer = setTimeout(() => {
       if (departure && departure !== selectedDeparture?.display_name) {
         fetchSuggestions(departure, setDepartureSuggestions, setDepartureLoading);
       }
-    }, 300);
-    return () => clearTimeout(handler);
+    }, 500);
+    return () => clearTimeout(timer);
   }, [departure, fetchSuggestions, selectedDeparture]);
 
-  // Gérer les suggestions pour le champ d'arrivée
+  // Gestion des suggestions pour l'arrivée
   useEffect(() => {
-    const handler = setTimeout(() => {
+    const timer = setTimeout(() => {
       fetchSuggestions(arrival, setArrivalSuggestions, setArrivalLoading);
-    }, 300);
-    return () => clearTimeout(handler);
+    }, 500);
+    return () => clearTimeout(timer);
   }, [arrival, fetchSuggestions]);
 
   // Enregistrer l'itinéraire et naviguer vers MapScreen
@@ -130,7 +139,6 @@ const UserRouteScreen = () => {
       setSelectedArrival(null);
       setIsDepartureModalVisible(false);
       setIsArrivalModalVisible(false);
-
       navigation.navigate('MapScreen', { route: newRoute });
     } else {
       Alert.alert('Erreur', 'Veuillez sélectionner un lieu de départ et d’arrivée.');
@@ -168,6 +176,7 @@ const UserRouteScreen = () => {
         <Text style={styles.title}>Itinéraire</Text>
         <View style={styles.formContainer}>
           <Text style={styles.modalTitle}>Les positions</Text>
+
           <TouchableOpacity
             style={styles.inputContainer}
             onPress={() => setIsDepartureModalVisible(true)}
@@ -178,6 +187,7 @@ const UserRouteScreen = () => {
             </Text>
           </TouchableOpacity>
           {departureLoading && <ActivityIndicator size="small" color="#1E88E5" />}
+
           <TouchableOpacity
             style={styles.inputContainer}
             onPress={() => setIsArrivalModalVisible(true)}
@@ -188,6 +198,7 @@ const UserRouteScreen = () => {
             </Text>
           </TouchableOpacity>
           {arrivalLoading && <ActivityIndicator size="small" color="#1E88E5" />}
+
           <View style={styles.modalActions}>
             <TouchableOpacity style={styles.confirmButton} onPress={handleSaveRoute}>
               <Icon name="check" size={20} color="#fff" style={styles.buttonIcon} />
@@ -199,6 +210,8 @@ const UserRouteScreen = () => {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Modal départ */}
         <Modal
           visible={isDepartureModalVisible}
           animationType="slide"
@@ -243,6 +256,8 @@ const UserRouteScreen = () => {
             </View>
           </View>
         </Modal>
+
+        {/* Modal arrivée */}
         <Modal
           visible={isArrivalModalVisible}
           animationType="slide"
@@ -292,6 +307,7 @@ const UserRouteScreen = () => {
   );
 };
 
+// === Stylesheet ===
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -312,16 +328,15 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    marginBottom: 20,
+    padding: 24,
+    borderRadius: 16,
+    elevation: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
+    marginBottom: 24,
     width: '100%',
-    height: '80%',
+    minHeight: '60%',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   modalTitle: {
@@ -334,17 +349,19 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
-    borderColor: '#e0e0e0',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 15,
-    backgroundColor: '#fafafa',
+    height: 56,
+    borderColor: '#dbeafe',
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    marginBottom: 18,
+    marginTop: 10,
+    backgroundColor: '#f8fafc',
+    elevation: 2,
     width: '100%',
   },
   inputIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   inputText: {
     flex: 1,
@@ -354,27 +371,31 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 20,
-    marginTop: 20,
+    rowGap: 30,
+    columnGap: 10,
+    marginTop: 150,
   },
   confirmButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#60a5fa',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-   
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    flex: 1,
+    justifyContent: 'center',
   },
   cancelButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    borderWidth:1,
-    borderColor:'#60a5fa'
+    backgroundColor: '#ffffff',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#60a5fa',
+    flex: 1,
+    justifyContent: 'center',
   },
   buttonText: {
     fontSize: 16,
@@ -382,13 +403,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginLeft: 8,
   },
-  buttonCancelText:{
+  buttonCancelText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#60a5fa',
     marginLeft: 8,
   },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -396,14 +416,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   suggestionsModalContent: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
-    elevation: 8,
+    backgroundColor: '#ffffff',
+    padding: 24,
+    borderRadius: 16,
+    elevation: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 10,
     width: '90%',
     maxHeight: '80%',
     alignItems: 'center',
@@ -411,13 +430,13 @@ const styles = StyleSheet.create({
   modalInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 48,
-    borderColor: '#e0e0e0',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 10,
-    backgroundColor: '#fafafa',
+    height: 52,
+    borderColor: '#dbeafe',
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#f8fafc',
     width: '100%',
   },
   modalInput: {
@@ -428,40 +447,37 @@ const styles = StyleSheet.create({
   suggestionItemTouchable: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    width: '100%',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#e2e8f0',
+    width: '100%',
   },
   suggestionIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   suggestionItem: {
     fontSize: 16,
     color: '#333',
   },
   suggestionsContainer: {
-    flexGrow: 0,
-    maxHeight: '60%',
+    flexGrow: 1,
+    maxHeight: 300,
     width: '100%',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   modalCancelButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    borderWidth:1,
-    borderColor:'#60a5fa'
+    backgroundColor: '#ffffff',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#60a5fa',
+    marginTop: 16,
   },
-
-  buttonClosetext :{
+  buttonClosetext: {
     fontSize: 16,
     fontWeight: '600',
     color: '#60a5fa',
