@@ -158,7 +158,7 @@ const UserHomeScreen = () => {
     return valid;
   };
 
-  // Gestion des interactions avec les marqueurs
+  // Gestion des interactions avec les marqueurs dsgh
   const handleMarkerPress = (type) => {
     console.log(`${type} marker pressed`);
   };
@@ -356,5 +356,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+
 
 export default UserHomeScreen;
