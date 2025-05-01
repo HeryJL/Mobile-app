@@ -155,7 +155,7 @@ const UserHomeScreen = () => {
     return valid;
   };
 
-  const handleMarkerPress = (type) => {
+leMarkerPress = (type) => {
     console.log(`${type} marker pressed`);
   };
 
@@ -464,5 +464,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+
 
 export default UserHomeScreen;

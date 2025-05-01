@@ -43,7 +43,7 @@ const UserProfileScreen = () => {
                 <Feather name="edit-2" size={18} color="#fff" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.title}>{user?.firstName || 'Utilisateur'} {user?.lastName}</Text>
+            <Text style={styles.title}>{user?.name || 'Utilisateur'}</Text>
             <Text style={styles.subtitle}>Membre depuis 2023</Text>
           </View>
 

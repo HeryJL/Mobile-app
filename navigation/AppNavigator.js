@@ -7,6 +7,7 @@ import DriverTabNavigator from './DriverTabNavigator';
 import { AuthContext } from '../context/AuthContext';
 import UserTabNavigator from './UserTabNavigator';
 import SignupScreen from '../screens/auth/SignupcScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgetPasswordScreen';
 
 
 const Stack = createStackNavigator();
@@ -17,6 +18,7 @@ const AuthNavigator = () => {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Signup" component={SignupScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       {/* Vous pouvez ajouter d'autres écrans d'inscription ici */}
     </Stack.Navigator>
   );
