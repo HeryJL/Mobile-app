@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, Alert } from 'react-native'; // Added Alert
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import axios from 'axios'; // Assuming axios is used for getRoute
 
 
 const RideRequestsScreen = () => {
@@ -14,12 +15,16 @@ const RideRequestsScreen = () => {
   const insets = useSafeAreaInsets();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  // Example static points - ideally, these would come from the ride request data
   const pickupPoint = { latitude: -19.8625, longitude: 47.0302 }; // point de départ du client
   const dropoffPoint = { latitude: -19.8712, longitude: 47.0377 };
   const [driverLocation, setDriverLocation] = useState(null);
+  const [routeCoordinates, setRouteCoordinates] = useState([]); // To store polyline coordinates
+
+  // Static ride requests for demonstration
   const rideRequests = [
     { id: '1', distance: 2, pickup: 'Aéroport', destination: 'Centre-ville', startLocation: pickupPoint, endLocation: dropoffPoint },
-    { id: '2', distance: 2, pickup: 'Gare', destination: 'Mahamasina', startLocation: pickupPoint, endLocation: dropoffPoint },
+    { id: '2', distance: 2, pickup: 'Gare', destination: 'Mahamasina', startLocation: dropoffPoint, endLocation: pickupPoint },
     { id: '3', distance: 2, pickup: 'Ambohijatovo', destination: 'Anosy', startLocation: pickupPoint, endLocation: dropoffPoint },
     { id: '4', distance: 2, pickup: 'Tana Water Front', destination: 'Ivato', startLocation: pickupPoint, endLocation: dropoffPoint },
     { id: '5', distance: 2, pickup: 'Ambohimanambola', destination: 'Andraharo', startLocation: pickupPoint, endLocation: dropoffPoint },
@@ -27,36 +32,42 @@ const RideRequestsScreen = () => {
     { id: '7', distance: 2, pickup: 'Antsenakely', destination: 'Andraharo', startLocation: pickupPoint, endLocation: dropoffPoint },
   ];
 
-  
-   const getDriverLocation = async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-              if (status !== 'granted') {
-                Alert.alert('Permission refusée', 'Activez la localisation.');
-                return null; // Return null if permission is not granted
-              }
-        const location = await Location.getCurrentPositionAsync({});
-        const current = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        };
-        setDriverLocation(current);
-        return current;
-      } catch (error) {
-        Alert.alert('Erreur GPS', error.message);
-        return null; // Return null on error
-      }
-    };
-    useEffect(()=> { 
-      getDriverLocation(); 
 
-    },[]);
-  
-    
-  
+  const getDriverLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission refusée', 'Activez la localisation.');
+        return null; // Return null if permission is not granted
+      }
+      const location = await Location.getCurrentPositionAsync({});
+      const current = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+      setDriverLocation(current);
+      return current;
+    } catch (error) {
+      Alert.alert('Erreur GPS', error.message);
+      return null; // Return null on error
+    }
+  };
+
+  // Fetch driver location on component mount
+  useEffect(() => {
+    getDriverLocation();
+  }, []);
+
 
   const getRoute = async (from, to) => {
+    if (!from || !to) {
+      console.warn("Missing start or end location for route.");
+      return [];
+    }
     try {
+      // Using a reliable routing service like OSRM is recommended for production
+      // Ensure you have a running OSRM instance or use a public one if available
+      // Be mindful of usage limits on public services.
       const url = `https://router.project-osrm.org/route/v1/driving/${from.longitude},${from.latitude};${to.longitude},${to.latitude}?overview=full&geometries=geojson`;
       const res = await axios.get(url);
       if (!res.data || !res.data.routes || res.data.routes.length === 0) {
@@ -75,6 +86,18 @@ const RideRequestsScreen = () => {
     }
   };
 
+  // Fetch route when a request is selected and driver location is available
+  useEffect(() => {
+    const fetchRoute = async () => {
+      if (selectedRequest && driverLocation) {
+        // Fetch route from driver's current location to the pickup point
+        const route = await getRoute(driverLocation, selectedRequest.startLocation);
+        setRouteCoordinates(route);
+      }
+    };
+    fetchRoute();
+  }, [selectedRequest, driverLocation]); // Depend on selectedRequest and driverLocation
+
 
   const handleRequestPress = (request) => {
     setSelectedRequest(request);
@@ -82,15 +105,22 @@ const RideRequestsScreen = () => {
   };
 
   const handleAccept = () => {
+    // Implement logic to accept the ride request
+    console.log("Accepted ride request:", selectedRequest);
     setIsModalVisible(false);
     setSelectedRequest(null);
+    setRouteCoordinates([]); // Clear route on modal close
+    // Navigate to a tracking screen or similar
   };
 
   const handleReject = () => {
+    // Implement logic to reject the ride request
+    console.log("Rejected ride request:", selectedRequest);
     setIsModalVisible(false);
     setSelectedRequest(null);
+    setRouteCoordinates([]); // Clear route on modal close
   };
-  
+
 
   return (
     <LinearGradient
@@ -121,17 +151,18 @@ const RideRequestsScreen = () => {
             onRequestClose={() => {
               setIsModalVisible(false);
               setSelectedRequest(null);
+              setRouteCoordinates([]); // Clear route on modal close
             }}
           >
             <View style={styles.modalOverlay}>
               <View style={styles.modalContent}>
-                {selectedRequest && (
+                {selectedRequest && driverLocation && ( // Conditionally render MapView when driverLocation is available
                   <>
                     <Text style={styles.modalTitle}>Détails de la course</Text>
                     <MapView
                       style={styles.map}
                       initialRegion={{
-                        latitude: driverLocation.latitude,
+                        latitude: driverLocation.latitude, // Use driver's location as initial center
                         longitude: driverLocation.longitude,
                         latitudeDelta: 0.05, // Adjusted delta for slightly wider view
                         longitudeDelta: 0.05, // Adjusted delta
@@ -139,20 +170,32 @@ const RideRequestsScreen = () => {
                       showsUserLocation
                       followsUserLocation
                     >
-                      <>
-                        <Marker
-                          coordinate={selectedRequest.startLocation}
-                          title="Départ client"
-                          description="Lieu de départ"
-                          pinColor="orange"
-                        />
-                        <Marker
-                          coordinate={selectedRequest.endLocation}
-                          title="Arrivée client"
-                          description="Destination finale"
-                          pinColor="red"
-                        />
-                      </>
+                      {/* Marker for driver's current location */}
+                      <Marker
+                        coordinate={driverLocation}
+                        title="Votre position"
+                        pinColor="blue" // Or a different color
+                      />
+                      {/* Marker for the pickup point */}
+                      <Marker
+                        coordinate={selectedRequest.startLocation}
+                        title="Départ client"
+                        description="Lieu de départ"
+                        pinColor="orange"
+                      />
+                      {/* Marker for the dropoff point */}
+                      <Marker
+                        coordinate={selectedRequest.endLocation}
+                        title="Arrivée client"
+                        description="Destination finale"
+                        pinColor="red"
+                      />
+                      {/* Polyline for the route from driver to pickup */}
+                      <Polyline
+                        coordinates={routeCoordinates}
+                        strokeColor="#1e90ff" // Blue color for the route line
+                        strokeWidth={4}
+                      />
                     </MapView>
 
 
@@ -171,14 +214,22 @@ const RideRequestsScreen = () => {
                     </View>
 
                     <TouchableOpacity
-                      style={styles.closeButton}
+                      style={styles.closeButton} // Consider placing this inside modalContent for better positioning
                       onPress={() => {
                         setIsModalVisible(false);
                         setSelectedRequest(null);
+                        setRouteCoordinates([]); // Clear route on modal close
                       }}
                     >
+                       {/* Add a visible close icon or text if needed */}
                     </TouchableOpacity>
                   </>
+                )}
+                {/* Show a loading indicator or message if driverLocation is null */}
+                {!driverLocation && (
+                  <View style={styles.loadingContainer}>
+                    <Text>Chargement de votre position...</Text>
+                  </View>
                 )}
               </View>
             </View>
@@ -247,9 +298,10 @@ const styles = StyleSheet.create({
   },
   map: {
     width: '100%',
-    height: '60%',
+    height: 250, // Adjusted map height
     backgroundColor: 'rgba(46, 161, 81, 0.88)',
     borderRadius: 10,
+    marginBottom: 15, // Added space below the map
   },
 
   modalTitle: {
@@ -305,6 +357,14 @@ const styles = StyleSheet.create({
   buttonIcon: {
     marginRight: 4,
   },
+  closeButton: {
+    // Style for your close button if you add one inside the modal content
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 200, // Give it some height
+  }
 
 });
 
