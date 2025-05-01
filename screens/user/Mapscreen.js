@@ -466,13 +466,12 @@ const MapScreen = () => {
           </View>
         </View>
       </Modal>
-
       {distance && !editingMode && !selectedMarkerInfo && (
-        <View style={styles.distanceContainer}>
-          <Icon name="straighten" size={20} color="#1e90ff" style={styles.distanceIcon} />
-          <Text style={styles.distanceText}>Distance: {distance} km</Text>
-        </View>
-      )}
+  <View style={styles.distanceTopLeft}>
+    <Icon name="straighten" size={20} color="#1e90ff" style={styles.distanceIcon} />
+    <Text style={styles.distanceText}>Distance: {distance} km</Text>
+  </View>
+)}
 
       {editingMode && (
         <View style={styles.editingOverlay}>
@@ -623,9 +622,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
   },
-  distanceContainer: {
+  distanceTopLeft: {
     position: 'absolute',
-    bottom: 170,
+    top: 20,
     left: 20,
     backgroundColor: '#fff',
     padding: 12,
@@ -637,7 +636,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
-    zIndex: 1,
+    zIndex: 10,
   },
   distanceIcon: {
     marginRight: 8,

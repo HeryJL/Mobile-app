@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'absolute',
     bottom: 20,
-    left: '50%',
+    left: '38%',
     transform: [{ translateX: -50 }],
     backgroundColor: '#4CAF50',
     paddingVertical: 12,
