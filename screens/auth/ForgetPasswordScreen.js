@@ -16,7 +16,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import axios from "axios";
-
+const API_BASE_URL = "http://192.168.0.59:5000"
 const { width } = Dimensions.get('window');
 
 const ForgotPasswordScreen = ({ navigation }) => {
@@ -58,7 +58,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     setIsLoading(true);
   
     try {
-      const response = await axios.post('http://192.168.0.59:5000/password/forgotPassword', {
+      const response = await axios.post(`${API_BASE_URL}/password/forgotPassword`, {
         email: email
       });
   
@@ -90,7 +90,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     setIsLoading(true);
     
     try {
-      const response = await axios.post('http://192.168.0.59:5000/password/verify-code', {
+      const response = await axios.post(`${API_BASE_URL}/password/verify-code`, {
         email: email,
         code: code
       });
@@ -133,7 +133,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     setIsLoading(true);
     
     try {
-      const response = await axios.post('http://192.168.0.59:5000/password/reset-password', {
+      const response = await axios.post(`${API_BASE_URL}/password/reset-password`, {
         email: email,
         newPassword: newPassword
       });
@@ -164,7 +164,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     setIsLoading(true);
     
     try {
-      const response = await axios.post('http://192.168.0.59:5000/password/forgotPassword', {
+      const response = await axios.post(`${API_BASE_URL}/password/forgotPassword`, {
         email: email
       });
 
