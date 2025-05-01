@@ -3,7 +3,7 @@ import mockUsers from '../data/mockUsers';
 import mockDrivers from '../data/mockDrivers';
 
 export const AuthContext = createContext();
-const API_BASE_URL = 'http://192.168.0.59:5000/users'
+const API_BASE_URL = 'http://192.168.0.181:5000/users'
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
