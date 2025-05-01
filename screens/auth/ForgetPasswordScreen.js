@@ -16,7 +16,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import axios from "axios";
-const API_BASE_URL = "http://192.168.0.59:5000"
+const API_BASE_URL = "http://192.168.0.192:5000"
 const { width } = Dimensions.get('window');
 
 const ForgotPasswordScreen = ({ navigation }) => {

@@ -18,7 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 
 // Configurer l'URL de base de votre API
-const API_BASE_URL = 'http://192.168.0.59:5000/users'; // Remplacez par votre adresse IP locale
+const API_BASE_URL = 'http://192.168.0.192:5000/users'; // Remplacez par votre adresse IP locale
 
 const SignupScreen = ({ navigation }) => {
   // États pour le formulaire
