@@ -60,8 +60,9 @@ const MapScreen = () => {
   }
 
   const [routeData, setRouteData] = useState(initialRouteData);
+  const [originalRouteData] = useState(initialRouteData); // Conserver l'itinéraire initial
   const [distance, setDistance] = useState(initialRouteData.distance || null);
-  const [routeCoordinates, setRouteCoordinates] = useState([]);
+  const [routeCoordinates, setRouteCoordinates] = useState(initialRouteData.routeCoordinates || []);
   const [editingMode, setEditingMode] = useState(null);
   const [selectedMarkerInfo, setSelectedMarkerInfo] = useState(null);
   const [isTaxiModalVisible, setIsTaxiModalVisible] = useState(false);
@@ -71,6 +72,7 @@ const MapScreen = () => {
   const [selectedTaxiForReservation, setSelectedTaxiForReservation] = useState(null);
 
   const mapRef = useRef(null);
+  const isEditingExistingRoute = !!initialRouteData.reservation; // Détecter si on modifie un itinéraire existant
 
   const calculateDistance = (coord1, coord2) => {
     const R = 6371e3;
@@ -273,7 +275,6 @@ const MapScreen = () => {
 
       setRouteData(updatedRoute);
       setDistance(newDistance);
-      updateSavedRoute(updatedRoute); // Mettre à jour l'itinéraire global
       Alert.alert('Point modifié', `Le point de ${editingPointType === 'departure' ? 'départ' : 'destination'} a été défini sur : ${displayName}`);
     } catch (error) {
       console.error("Reverse geocoding error:", error);
@@ -287,25 +288,40 @@ const MapScreen = () => {
       return;
     }
 
-    setIsLoadingTaxis(true);
+    if (isEditingExistingRoute) {
+      // Mode modification : sauvegarder directement les modifications
+      const updatedRoute = {
+        ...routeData,
+        distance,
+        routeCoordinates,
+      };
+      updateSavedRoute(updatedRoute);
+      Alert.alert('Succès', 'Les modifications de l\'itinéraire ont été enregistrées.');
+      navigation.navigate('MainTabs', {
+        screen: 'Accueil',
+        params: { savedRoute: updatedRoute },
+      });
+    } else {
+      // Mode création : afficher la liste des taxis
+      setIsLoadingTaxis(true);
+      try {
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-    try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+        const taxis = mockTaxis
+          .filter(taxi => taxi.status === 'disponible')
+          .map(taxi => ({
+            ...taxi,
+            distance: calculateDistance(routeData.departureCoordinates, taxi.coordinates),
+          }));
 
-      const taxis = mockTaxis
-        .filter(taxi => taxi.status === 'disponible')
-        .map(taxi => ({
-          ...taxi,
-          distance: calculateDistance(routeData.departureCoordinates, taxi.coordinates),
-        }));
-
-      setAvailableTaxis(taxis);
-      setIsTaxiModalVisible(true);
-    } catch (error) {
-      console.error('Error simulating taxis:', error);
-      Alert.alert('Erreur', 'Impossible de charger la liste des taxis.');
-    } finally {
-      setIsLoadingTaxis(false);
+        setAvailableTaxis(taxis);
+        setIsTaxiModalVisible(true);
+      } catch (error) {
+        console.error('Error simulating taxis:', error);
+        Alert.alert('Erreur', 'Impossible de charger la liste des taxis.');
+      } finally {
+        setIsLoadingTaxis(false);
+      }
     }
   };
 
@@ -339,7 +355,7 @@ const MapScreen = () => {
         },
       };
 
-      updateSavedRoute(updatedRoute); // Sauvegarder l'itinéraire avec la réservation
+      updateSavedRoute(updatedRoute);
       Alert.alert('Succès', `Réservation confirmée avec le taxi ${taxi.model} (${taxi.licensePlate})`);
 
       navigation.navigate('MainTabs', {
@@ -359,14 +375,24 @@ const MapScreen = () => {
   const handleCancel = () => {
     Alert.alert(
       'Confirmer l\'annulation',
-      'Voulez-vous vraiment annuler cet itinéraire ?',
+      isEditingExistingRoute
+        ? 'Voulez-vous annuler les modifications ? Les changements ne seront pas enregistrés.'
+        : 'Voulez-vous annuler la création de cet itinéraire ?',
       [
         { text: 'Non', style: 'cancel' },
         {
           text: 'Oui',
           onPress: () => {
-            updateSavedRoute(null); // Supprimer l'itinéraire
-            navigation.navigate('MainTabs', { screen: 'Itinéraire' });
+            if (isEditingExistingRoute) {
+              // Restaurer l'itinéraire initial en mode modification
+              setRouteData(originalRouteData);
+              updateSavedRoute(originalRouteData);
+              navigation.navigate('MainTabs', { screen: 'Itinéraire' });
+            } else {
+              // Supprimer l'itinéraire en mode création
+              updateSavedRoute(null);
+              navigation.navigate('MainTabs', { screen: 'Itinéraire' });
+            }
           },
         },
       ],
