@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Text, StyleSheet, View, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE, Marker, Polyline, Callout } from 'react-native-maps';
+import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE, Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
@@ -119,6 +119,7 @@ const UserHomeScreen = () => {
           latitudeDelta: 0.005,
           longitudeDelta: 0.005,
         };
+        console.log('User Location:', userLocation); // Log pour déboguer
         setLocation(userLocation);
 
         if (mapRef.current) {
@@ -169,6 +170,7 @@ const UserHomeScreen = () => {
       const taxi = mockTaxis.find(t => t._id === savedRoute.reservation.taxiId);
       if (taxi) {
         setDriverLocation(taxi.coordinates);
+        console.log('Driver Location:', taxi.coordinates); // Log pour déboguer
 
         // Simuler le déplacement du chauffeur vers la destination
         const interval = setInterval(() => {
@@ -210,6 +212,7 @@ const UserHomeScreen = () => {
   // Mettre à jour la carte pour inclure la position du chauffeur
   useEffect(() => {
     if (savedRoute && mapRef.current) {
+      console.log('Saved Route Coordinates:', savedRoute); // Log pour déboguer
       const coordinates = [
         savedRoute.departureCoordinates,
         savedRoute.arrivalCoordinates,
@@ -287,20 +290,15 @@ const UserHomeScreen = () => {
     );
   };
 
-  const handleMarkerPress = (type) => {
-    console.log(`${type} marker pressed`);
-  };
-
-  const handleCalloutPress = (type) => {
-    console.log(`${type} callout pressed`);
-  };
-
   return (
     <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
       <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
           <Icon name="map" size={24} color="#fff" style={styles.headerIcon} />
           <Text style={styles.greetingText}>Bonjour, prêt à rouler ?</Text>
+          {savedRoute && savedRoute.reservation && savedRoute.reservation.status === 'confirmed' && (
+            <Text style={styles.taxiStatusText}>{"\n"}Votre taxi arrive, veuillez patienter un peu</Text>
+          )}
         </View>
         <TouchableOpacity style={styles.partirButton} onPress={handlePartir}>
           <Icon name="rocket" size={20} color="#fff" style={styles.partirButtonIcon} />
@@ -318,68 +316,40 @@ const UserHomeScreen = () => {
           showsUserLocation={true}
           showsMyLocationButton={true}
         >
+          {/* Marqueur pour la position de l'utilisateur */}
           {!savedRoute && location && isValidCoordinate(location) && (
             <Marker
               coordinate={{ latitude: location.latitude, longitude: location.longitude }}
-              title="Votre position"
               pinColor="blue"
-              onPress={() => handleMarkerPress('User Location')}
-            >
-              <Callout tooltip onPress={() => handleCalloutPress('User Location')}>
-                <View style={styles.calloutContainer}>
-                  <Text style={styles.calloutTitle}>Votre position</Text>
-                  <Text>Votre position actuelle</Text>
-                </View>
-              </Callout>
-            </Marker>
+              title="Votre position"
+              description={`Lat: ${location.latitude.toFixed(6)}, Lon: ${location.longitude.toFixed(6)}`}
+            />
           )}
+
+          {/* Marqueurs pour le trajet (départ, arrivée, chauffeur) */}
           {savedRoute &&
             isValidCoordinate(savedRoute.departureCoordinates) &&
             isValidCoordinate(savedRoute.arrivalCoordinates) && (
               <>
                 <Marker
                   coordinate={savedRoute.departureCoordinates}
+                  pinColor="green"
                   title="Départ"
                   description={savedRoute.departure || 'Point de départ'}
-                  pinColor="green"
-                  onPress={() => handleMarkerPress('Departure')}
-                >
-                  <Callout tooltip onPress={() => handleCalloutPress('Departure')}>
-                    <View style={styles.calloutContainer}>
-                      <Text style={styles.calloutTitle}>Départ</Text>
-                      <Text>{savedRoute.departure || 'Point de départ'}</Text>
-                    </View>
-                  </Callout>
-                </Marker>
+                />
                 <Marker
                   coordinate={savedRoute.arrivalCoordinates}
+                  pinColor="red"
                   title="Arrivée"
                   description={savedRoute.arrival || 'Point d’arrivée'}
-                  pinColor="red"
-                  onPress={() => handleMarkerPress('Arrival')}
-                >
-                  <Callout tooltip onPress={() => handleCalloutPress('Arrival')}>
-                    <View style={styles.calloutContainer}>
-                      <Text style={styles.calloutTitle}>Arrivée</Text>
-                      <Text>{savedRoute.arrival || 'Point d’arrivée'}</Text>
-                    </View>
-                  </Callout>
-                </Marker>
+                />
                 {driverLocation && isValidCoordinate(driverLocation) && (
                   <Marker
                     coordinate={driverLocation}
-                    title="Chauffeur"
-                    description={savedRoute.reservation.driverName}
                     pinColor="yellow"
-                    onPress={() => handleMarkerPress('Driver')}
-                  >
-                    <Callout tooltip onPress={() => handleCalloutPress('Driver')}>
-                      <View style={styles.calloutContainer}>
-                        <Text style={styles.calloutTitle}>Chauffeur</Text>
-                        <Text>{savedRoute.reservation.driverName}</Text>
-                      </View>
-                    </Callout>
-                  </Marker>
+                    title="Chauffeur"
+                    description={`${savedRoute.reservation.driverName}\nModèle: ${savedRoute.reservation.model}\nPlaque: ${savedRoute.reservation.licensePlate}`}
+                  />
                 )}
                 {Array.isArray(savedRoute.routeCoordinates) &&
                 savedRoute.routeCoordinates.length > 0 &&
@@ -491,6 +461,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
+  taxiStatusText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#471',
+    marginLeft: 10,
+  },
   partirButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -569,7 +545,7 @@ const styles = StyleSheet.create({
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFA500',
+    backgroundColor: '#60a5fa',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,
@@ -617,19 +593,6 @@ const styles = StyleSheet.create({
   },
   buttonIcon: {
     marginRight: 4,
-  },
-  calloutTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 2,
-  },
-  calloutContainer: {
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 8,
-    minWidth: 150,
-    alignItems: 'center',
   },
 });
 
