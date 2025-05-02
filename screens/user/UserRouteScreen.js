@@ -97,7 +97,7 @@ const UserRouteScreen = () => {
     }
   }, [user]);
 
-  // Géstion des suggestions pour le départ
+  // Gestion des suggestions pour le départ
   useEffect(() => {
     const timer = setTimeout(() => {
       if (departure && departure !== selectedDeparture?.display_name) {
@@ -115,24 +115,121 @@ const UserRouteScreen = () => {
     return () => clearTimeout(timer);
   }, [arrival, fetchSuggestions]);
 
+  // Formule de calcul de distance (même que dans MapScreen)
+  const calculateDistance = (coord1, coord2) => {
+    const R = 6371e3; // Rayon de la Terre en mètres
+    const lat1 = (coord1.latitude * Math.PI) / 180;
+    const lat2 = (coord2.latitude * Math.PI) / 180;
+    const deltaLat = ((coord2.latitude - coord1.latitude) * Math.PI) / 180;
+    const deltaLon = ((coord2.longitude - coord1.longitude) * Math.PI) / 180;
+
+    const a =
+      Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const dist = R * c;
+    return (dist / 1000).toFixed(2); // Convertir en km, arrondir à 2 décimales
+  };
+
   // Enregistrer l'itinéraire et naviguer vers MapScreen
-  const handleSaveRoute = () => {
+  const handleSaveRoute = async () => {
     if (selectedDeparture && selectedArrival) {
+      const departureLat = parseFloat(selectedDeparture.lat);
+      const departureLon = parseFloat(selectedDeparture.lon);
+      const arrivalLat = parseFloat(selectedArrival.lat);
+      const arrivalLon = parseFloat(selectedArrival.lon);
+
+      // Calculer la distance
+      const distance = calculateDistance(
+        { latitude: departureLat, longitude: departureLon },
+        { latitude: arrivalLat, longitude: arrivalLon }
+      );
+
+      // Vérifier les informations de pays et passage par la mer
+      let crossesCountry = false;
+      let crossesSea = false;
+
+      try {
+        // Récupérer les détails du lieu de départ
+        const departureResponse = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${departureLat}&lon=${departureLon}&format=json&addressdetails=1`,
+          {
+            headers: {
+              'User-Agent': 'ReactNativeApp/1.0 (' + user?.email + ')',
+            },
+          }
+        );
+        const departureData = await departureResponse.json();
+
+        // Récupérer les détails du lieu d'arrivée
+        const arrivalResponse = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${arrivalLat}&lon=${arrivalLon}&format=json&addressdetails=1`,
+          {
+            headers: {
+              'User-Agent': 'ReactNativeApp/1.0 (' + user?.email + ')',
+            },
+          }
+        );
+        const arrivalData = await arrivalResponse.json();
+
+        // Vérifier si les pays sont différents
+        const departureCountry = departureData.address?.country;
+        const arrivalCountry = arrivalData.address?.country;
+        if (departureCountry && arrivalCountry && departureCountry !== arrivalCountry) {
+          crossesCountry = true;
+        }
+
+        // Vérifier si l'un des lieux est sur l'eau (approximation)
+        const departureType = departureData.addresstype;
+        const arrivalType = arrivalData.addresstype;
+        if (
+          departureType === 'water' ||
+          arrivalType === 'water' ||
+          departureData.address?.natural === 'water' ||
+          arrivalData.address?.natural === 'water'
+        ) {
+          crossesSea = true;
+        }
+      } catch (error) {
+        console.error('Erreur lors de la vérification des lieux:', error);
+        Alert.alert('Erreur', 'Impossible de vérifier les lieux.');
+        return;
+      }
+
+      // Vérifier les conditions pour afficher une erreur
+      if (parseFloat(distance) > 30 || crossesCountry || crossesSea) {
+        let errorMessage = 'Itinéraire non valide : ';
+        if (parseFloat(distance) > 30) {
+          errorMessage += `la distance (${distance} km) dépasse 30 km`;
+        }
+        if (crossesCountry) {
+          errorMessage += `${parseFloat(distance) > 30 ? ', ' : ''}changement de pays détecté`;
+        }
+        if (crossesSea) {
+          errorMessage += `${parseFloat(distance) > 30 || crossesCountry ? ', ' : ''}passage par la mer détecté`;
+        }
+        errorMessage += '.';
+        Alert.alert('Erreur', errorMessage);
+        return;
+      }
+
+      // Si tout est valide, créer l'itinéraire
       const newRoute = {
         id: String(Date.now()),
         departure: selectedDeparture.display_name,
         arrival: selectedArrival.display_name,
         departureCoordinates: {
-          latitude: parseFloat(selectedDeparture.lat),
-          longitude: parseFloat(selectedDeparture.lon),
+          latitude: departureLat,
+          longitude: departureLon,
         },
         arrivalCoordinates: {
-          latitude: parseFloat(selectedArrival.lat),
-          longitude: parseFloat(selectedArrival.lon),
+          latitude: arrivalLat,
+          longitude: arrivalLon,
         },
-        distance: null,
+        distance: distance, // Stocker la distance
         routeCoordinates: [],
       };
+
       console.log('New route created:', newRoute);
       setDeparture(selectedDeparture.display_name);
       setArrival('');

@@ -48,7 +48,7 @@ const MapScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { route: initialRouteData } = route.params || {};
-  
+
   if (!initialRouteData || (!initialRouteData.departureCoordinates && !initialRouteData.arrivalCoordinates)) {
     console.error("Missing or invalid initial route data");
     useEffect(() => {
@@ -59,7 +59,8 @@ const MapScreen = () => {
   }
 
   const [routeData, setRouteData] = useState(initialRouteData);
-  const [distance, setDistance] = useState(null);
+  // Initialiser la distance avec la valeur de initialRouteData.distance
+  const [distance, setDistance] = useState(initialRouteData.distance || null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [editingMode, setEditingMode] = useState(null);
   const [selectedMarkerInfo, setSelectedMarkerInfo] = useState(null);
@@ -68,17 +69,17 @@ const MapScreen = () => {
   const [isLoadingTaxis, setIsLoadingTaxis] = useState(false);
   const [isConfirmationModalVisible, setIsConfirmationModalVisible] = useState(false);
   const [selectedTaxiForReservation, setSelectedTaxiForReservation] = useState(null);
-  
+
   const mapRef = useRef(null);
 
-  // Reusable Haversine distance calculation
+  // Reusable Haversine distance calculation (conservée pour les calculs de distance des taxis)
   const calculateDistance = (coord1, coord2) => {
     const R = 6371e3; // Earth's radius in meters
     const lat1 = (coord1.latitude * Math.PI) / 180;
     const lat2 = (coord2.latitude * Math.PI) / 180;
     const deltaLat = ((coord2.latitude - coord1.latitude) * Math.PI) / 180;
     const deltaLon = ((coord2.longitude - coord1.longitude) * Math.PI) / 180;
-    
+
     const a =
       Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
       Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
@@ -89,7 +90,6 @@ const MapScreen = () => {
 
   useEffect(() => {
     if (routeData.departureCoordinates && routeData.arrivalCoordinates) {
-      setDistance(calculateDistance(routeData.departureCoordinates, routeData.arrivalCoordinates));
       const fetchRoute = async () => {
         try {
           const response = await fetch(
@@ -101,17 +101,17 @@ const MapScreen = () => {
             throw new Error(`Erreur de l'API OSRM: ${response.status}`);
           }
           const data = await response.json();
-          
+
           if (data.routes && data.routes.length > 0) {
             const coords = data.routes[0].geometry.coordinates.map(([lon, lat]) => ({
               latitude: lat,
               longitude: lon,
             }));
             setRouteCoordinates(coords);
-            
+
             if (mapRef.current) {
               const allCoords = [routeData.departureCoordinates, routeData.arrivalCoordinates, ...coords];
-              
+
               if (allCoords.length > 1) {
                 mapRef.current.fitToCoordinates(allCoords, {
                   edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
@@ -129,10 +129,10 @@ const MapScreen = () => {
           } else {
             Alert.alert('Erreur', 'Aucun itinéraire trouvé pour les points sélectionnés.');
             setRouteCoordinates([routeData.departureCoordinates, routeData.arrivalCoordinates].filter(Boolean));
-            
+
             if (mapRef.current) {
               const fallbackCoords = [routeData.departureCoordinates, routeData.arrivalCoordinates].filter(Boolean);
-              
+
               if (fallbackCoords.length > 1) {
                 mapRef.current.fitToCoordinates(fallbackCoords, {
                   edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
@@ -152,10 +152,10 @@ const MapScreen = () => {
           console.error("Fetch route error:", error);
           Alert.alert('Erreur', `Impossible de récupérer le trajet: ${error.message}`);
           setRouteCoordinates([routeData.departureCoordinates, routeData.arrivalCoordinates].filter(Boolean));
-          
+
           if (mapRef.current) {
             const fallbackCoords = [routeData.departureCoordinates, routeData.arrivalCoordinates].filter(Boolean);
-            
+
             if (fallbackCoords.length > 1) {
               mapRef.current.fitToCoordinates(fallbackCoords, {
                 edgePadding: { top: 100, right: 100, bottom: 100, left: 100 },
@@ -177,7 +177,7 @@ const MapScreen = () => {
       const singlePoint = routeData.departureCoordinates || routeData.arrivalCoordinates;
       setRouteCoordinates([singlePoint]);
       setDistance(null);
-      
+
       if (mapRef.current && singlePoint) {
         mapRef.current.animateToRegion({
           latitude: singlePoint.latitude,
@@ -190,13 +190,13 @@ const MapScreen = () => {
       setRouteCoordinates([]);
       setDistance(null);
     }
-    
+
     return () => {};
   }, [routeData]);
 
   const handleMarkerPress = (type) => {
     if (editingMode) return;
-    
+
     if (type === 'departure' && routeData.departureCoordinates) {
       setSelectedMarkerInfo({
         type: 'Départ',
@@ -227,11 +227,11 @@ const MapScreen = () => {
 
   const handleMapPress = async (event) => {
     if (!editingMode) return;
-    
+
     const { latitude, longitude } = event.nativeEvent.coordinate;
     const editingPointType = editingMode;
     setEditingMode(null);
-    
+
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
@@ -241,22 +241,37 @@ const MapScreen = () => {
           },
         }
       );
-      
+
       if (!response.ok) {
         const errorBody = await response.text();
         console.error(`Nominatim Error ${response.status}:`, errorBody);
         throw new Error(`Erreur de l'API Nominatim: ${response.status}`);
       }
-      
+
       const data = await response.json();
       const displayName = data.display_name || 'Lieu inconnu';
-      
+
+      // Recalculer la distance si les coordonnées changent
+      let newDistance = routeData.distance;
+      if (editingPointType === 'departure' && routeData.arrivalCoordinates) {
+        newDistance = calculateDistance(
+          { latitude, longitude },
+          routeData.arrivalCoordinates
+        );
+      } else if (editingPointType === 'arrival' && routeData.departureCoordinates) {
+        newDistance = calculateDistance(
+          routeData.departureCoordinates,
+          { latitude, longitude }
+        );
+      }
+
       if (editingPointType === 'departure') {
         setRouteData({
           ...routeData,
           departure: displayName,
           departureCoordinates: { latitude, longitude },
         });
+        setDistance(newDistance);
         Alert.alert('Point modifié', `Le point de départ a été défini sur : ${displayName}`);
       } else if (editingPointType === 'arrival') {
         setRouteData({
@@ -264,6 +279,7 @@ const MapScreen = () => {
           arrival: displayName,
           arrivalCoordinates: { latitude, longitude },
         });
+        setDistance(newDistance);
         Alert.alert('Point modifié', `Le point de destination a été défini sur : ${displayName}`);
       }
     } catch (error) {
@@ -277,13 +293,13 @@ const MapScreen = () => {
       Alert.alert('Attention', 'Veuillez définir le point de départ et d\'arrivée.');
       return;
     }
-    
+
     setIsLoadingTaxis(true);
-    
+
     try {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       // Filter available taxis and calculate distance from departure point
       const taxis = mockTaxis
         .filter(taxi => taxi.status === 'disponible')
@@ -291,7 +307,7 @@ const MapScreen = () => {
           ...taxi,
           distance: calculateDistance(routeData.departureCoordinates, taxi.coordinates),
         }));
-      
+
       setAvailableTaxis(taxis);
       setIsTaxiModalVisible(true);
     } catch (error) {
@@ -312,17 +328,17 @@ const MapScreen = () => {
         distance,
         routeCoordinates,
       };
-      
+
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       const mockReservation = {
         _id: `reservation-${Date.now()}`,
         ...reservationData,
       };
-      
+
       Alert.alert('Succès', `Réservation confirmée avec le taxi ${taxi.model} (${taxi.licensePlate})`);
-      
+
       navigation.navigate('MainTabs', {
         screen: 'Accueil',
         params: {
@@ -344,7 +360,7 @@ const MapScreen = () => {
       console.error('Error simulating reservation:', error);
       Alert.alert('Erreur', 'Impossible de confirmer la réservation.');
     }
-    
+
     setIsTaxiModalVisible(false);
     setIsConfirmationModalVisible(false);
     setSelectedTaxiForReservation(null);
@@ -368,7 +384,7 @@ const MapScreen = () => {
   };
 
   const renderTaxiItem = ({ item }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.taxiItem}
       onPress={() => {
         setSelectedTaxiForReservation(item);
@@ -479,7 +495,7 @@ const MapScreen = () => {
               <Icon name="close" size={24} color="#333" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Taxis Disponibles</Text>
-            
+
             {isLoadingTaxis ? (
               <ActivityIndicator size="large" color="#60a5fa" />
             ) : availableTaxis.length === 0 ? (
