@@ -45,48 +45,7 @@ const mockTaxis = [
     coordinates: { latitude: -18.8750, longitude: 47.5150 },
   },
 ];
-const requestPermissions = async () => {
-  const { status } = await Notifications.requestPermissionsAsync();
-  if (status !== 'granted') {
-    Alert.alert(
-      'Permissions requises',
-      'Veuillez activer les notifications dans les paramètres de votre appareil.',
-      [
-        { text: 'OK', style: 'cancel' },
-        {
-          text: 'Ouvrir les paramètres',
-          onPress: () => Linking.openSettings(),
-        },
-      ]
-    );
-  }
-  return status;
-};
 
-useEffect(() => {
-  const setupNotifications = async () => {
-    if (!Device.isDevice) {
-      console.log('Notifications require a physical device');
-      return;
-    }
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-      });
-    }
-
-    const status = await requestPermissions();
-    if (status !== 'granted') {
-      console.log('Notification permissions not granted');
-    }
-  };
-
-  setupNotifications();
-}, []);
 // Configurer le gestionnaire de notifications
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -462,6 +421,7 @@ const MapScreen = () => {
           licensePlate: taxi.licensePlate,
           model: taxi.model,
           color: taxi.color,
+          status: 'pending', // Ajout du statut initial
         },
       };
 
@@ -469,9 +429,9 @@ const MapScreen = () => {
       // Envoyer une notification locale
       await sendLocalNotification(
         'Réservation confirmée',
-        `Votre trajet avec le taxi ${taxi.model} (${taxi.licensePlate}) a été enregistré.`
+        `Votre trajet avec le taxi ${taxi.model} (${taxi.licensePlate}) a été enregistré. En attente de confirmation du chauffeur.`
       );
-      Alert.alert('Succès', `Réservation confirmée avec le taxi ${taxi.model} (${taxi.licensePlate})`);
+      Alert.alert('Succès', `Réservation confirmée avec le taxi ${taxi.model} (${taxi.licensePlate}). En attente de confirmation du chauffeur.`);
 
       navigation.navigate('MainTabs', {
         screen: 'Accueil',

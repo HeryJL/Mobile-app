@@ -3,19 +3,106 @@ import { Text, StyleSheet, View, TouchableOpacity, Alert, Platform } from 'react
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE, Marker, Polyline, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { AuthContext } from '../../context/AuthContext';
+
+// Données simulées des taxis (extraites de MapScreen.js)
+const mockTaxis = [
+  {
+    _id: 'taxi1',
+    driverId: { name: 'Jean Dupont', phone: '+261 34 123 4567' },
+    licensePlate: 'TAXI-123',
+    model: 'Toyota Corolla',
+    color: 'Jaune',
+    status: 'disponible',
+    coordinates: { latitude: -18.8792, longitude: 47.5079 },
+  },
+  {
+    _id: 'taxi2',
+    driverId: { name: 'Marie Rakoto', phone: '+261 33 987 6543' },
+    licensePlate: 'TAXI-456',
+    model: 'Peugeot 208',
+    color: 'Noir',
+    status: 'disponible',
+    coordinates: { latitude: -18.8700, longitude: 47.5100 },
+  },
+  {
+    _id: 'taxi3',
+    driverId: { name: 'Paul Rabe', phone: '+261 32 555 7890' },
+    licensePlate: 'TAXI-789',
+    model: 'Hyundai Accent',
+    color: 'Bleu',
+    status: 'occupé',
+    coordinates: { latitude: -18.8850, longitude: 47.5000 },
+  },
+  {
+    _id: 'taxi4',
+    driverId: { name: 'Sophie Andria', phone: '+261 34 222 3333' },
+    licensePlate: 'TAXI-101',
+    model: 'Renault Clio',
+    color: 'Blanc',
+    status: 'disponible',
+    coordinates: { latitude: -18.8750, longitude: 47.5150 },
+  },
+];
+
+// Configurer le gestionnaire de notifications
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 const UserHomeScreen = () => {
   const insets = useSafeAreaInsets();
   const route = useRoute();
   const navigation = useNavigation();
-  const { savedRoute } = useContext(AuthContext);
+  const { savedRoute, updateSavedRoute } = useContext(AuthContext);
   const [location, setLocation] = useState(null);
+  const [driverLocation, setDriverLocation] = useState(null);
   const [showRouteDetails, setShowRouteDetails] = useState(false);
   const mapRef = useRef(null);
 
+  // Configurer les notifications
+  useEffect(() => {
+    const setupNotifications = async () => {
+      if (!Device.isDevice) {
+        console.log('Notifications require a physical device');
+        return;
+      }
+
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+        });
+      }
+
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus !== 'granted') {
+        Alert.alert('Erreur', 'Les permissions pour les notifications sont requises.');
+        return;
+      }
+    };
+
+    setupNotifications();
+  }, []);
+
+  // Obtenir la position de l'utilisateur
   useEffect(() => {
     (async () => {
       try {
@@ -44,6 +131,83 @@ const UserHomeScreen = () => {
     })();
   }, []);
 
+  // Fonction pour envoyer une notification locale
+  const sendLocalNotification = async (title, body) => {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          sound: 'default',
+        },
+        trigger: { seconds: 1 },
+      });
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi de la notification:', error);
+      Alert.alert('Erreur', 'Impossible d\'envoyer la notification.');
+    }
+  };
+
+  // Calculer la distance entre deux coordonnées
+  const calculateDistance = (coord1, coord2) => {
+    const R = 6371e3; // Rayon de la Terre en mètres
+    const lat1 = (coord1.latitude * Math.PI) / 180;
+    const lat2 = (coord2.latitude * Math.PI) / 180;
+    const deltaLat = ((coord2.latitude - coord1.latitude) * Math.PI) / 180;
+    const deltaLon = ((coord2.longitude - coord1.longitude) * Math.PI) / 180;
+
+    const a =
+      Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+      Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance en mètres
+  };
+
+  // Simuler la position du chauffeur
+  useEffect(() => {
+    if (savedRoute && savedRoute.reservation && savedRoute.reservation.status === 'confirmed') {
+      const taxi = mockTaxis.find(t => t._id === savedRoute.reservation.taxiId);
+      if (taxi) {
+        setDriverLocation(taxi.coordinates);
+
+        // Simuler le déplacement du chauffeur vers la destination
+        const interval = setInterval(() => {
+          setDriverLocation(prev => {
+            if (!prev || !savedRoute.arrivalCoordinates) return prev;
+
+            // Calculer la distance restante
+            const distance = calculateDistance(prev, savedRoute.arrivalCoordinates);
+            if (distance < 50) { // Seuil de 50 mètres
+              clearInterval(interval);
+              sendLocalNotification(
+                'Chauffeur arrivé',
+                `Votre chauffeur ${savedRoute.reservation.driverName} est arrivé à votre destination.`
+              );
+              Alert.alert('Arrivée', 'Votre chauffeur est arrivé à votre destination.');
+              updateSavedRoute(null); // Supprimer le trajet
+              return prev;
+            }
+
+            // Simuler un déplacement progressif
+            const speed = 0.0001; // Ajuster pour simuler la vitesse
+            const deltaLat = (savedRoute.arrivalCoordinates.latitude - prev.latitude) * speed;
+            const deltaLon = (savedRoute.arrivalCoordinates.longitude - prev.longitude) * speed;
+
+            return {
+              latitude: prev.latitude + deltaLat,
+              longitude: prev.longitude + deltaLon,
+            };
+          });
+        }, 1000); // Mettre à jour toutes les secondes
+
+        return () => clearInterval(interval);
+      }
+    } else {
+      setDriverLocation(null);
+    }
+  }, [savedRoute]);
+
+  // Mettre à jour la carte pour inclure la position du chauffeur
   useEffect(() => {
     if (savedRoute && mapRef.current) {
       const coordinates = [
@@ -53,6 +217,9 @@ const UserHomeScreen = () => {
       if (savedRoute.routeCoordinates.length > 0) {
         coordinates.push(...savedRoute.routeCoordinates);
       }
+      if (driverLocation) {
+        coordinates.push(driverLocation);
+      }
       mapRef.current.fitToCoordinates(coordinates, {
         edgePadding: { top: 70, right: 70, bottom: 70, left: 70 },
         animated: true,
@@ -60,7 +227,7 @@ const UserHomeScreen = () => {
     } else if (location && mapRef.current) {
       mapRef.current.animateToRegion(location, 1000);
     }
-  }, [savedRoute, location]);
+  }, [savedRoute, location, driverLocation]);
 
   const fallbackRegion = {
     latitude: -18.8792,
@@ -88,6 +255,7 @@ const UserHomeScreen = () => {
         {
           text: 'Oui',
           onPress: () => {
+            updateSavedRoute(null);
             setShowRouteDetails(false);
             if (location && mapRef.current) {
               mapRef.current.animateToRegion(location, 1000);
@@ -197,6 +365,22 @@ const UserHomeScreen = () => {
                     </View>
                   </Callout>
                 </Marker>
+                {driverLocation && isValidCoordinate(driverLocation) && (
+                  <Marker
+                    coordinate={driverLocation}
+                    title="Chauffeur"
+                    description={savedRoute.reservation.driverName}
+                    pinColor="yellow"
+                    onPress={() => handleMarkerPress('Driver')}
+                  >
+                    <Callout tooltip onPress={() => handleCalloutPress('Driver')}>
+                      <View style={styles.calloutContainer}>
+                        <Text style={styles.calloutTitle}>Chauffeur</Text>
+                        <Text>{savedRoute.reservation.driverName}</Text>
+                      </View>
+                    </Callout>
+                  </Marker>
+                )}
                 {Array.isArray(savedRoute.routeCoordinates) &&
                 savedRoute.routeCoordinates.length > 0 &&
                 savedRoute.routeCoordinates.every(isValidCoordinate) ? (
@@ -229,19 +413,33 @@ const UserHomeScreen = () => {
                 <Text style={styles.reservationText}>
                   Chauffeur: {savedRoute.reservation.driverName}
                 </Text>
-                <Text style={styles.statusText}>Statut: En attente de confirmation</Text>
+                <Text
+                  style={[
+                    styles.statusText,
+                    {
+                      color:
+                        savedRoute.reservation.status === 'confirmed'
+                          ? '#4CAF50'
+                          : '#FFA500',
+                    },
+                  ]}
+                >
+                  Statut: {savedRoute.reservation.status === 'confirmed' ? 'Confirmé' : 'En attente de confirmation'}
+                </Text>
               </>
             )}
-            <View style={styles.routeActions}>
-              <TouchableOpacity style={styles.editButton} onPress={handleEditRoute}>
-                <Icon name="edit" size={20} color="#fff" style={styles.buttonIcon} />
-                <Text style={styles.buttonText}>Modifier</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.clearButton} onPress={handleClearRoute}>
-                <Icon name="delete" size={20} color="#fff" style={styles.buttonIcon} />
-                <Text style={styles.buttonText}>Supprimer</Text>
-              </TouchableOpacity>
-            </View>
+            {savedRoute.reservation && savedRoute.reservation.status === 'pending' && (
+              <View style={styles.routeActions}>
+                <TouchableOpacity style={styles.editButton} onPress={handleEditRoute}>
+                  <Icon name="edit" size={20} color="#fff" style={styles.buttonIcon} />
+                  <Text style={styles.buttonText}>Modifier</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.clearButton} onPress={handleClearRoute}>
+                  <Icon name="delete" size={20} color="#fff" style={styles.buttonIcon} />
+                  <Text style={styles.buttonText}>Supprimer</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
         {savedRoute && (
@@ -360,7 +558,6 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFA500',
     marginBottom: 12,
   },
   routeActions: {

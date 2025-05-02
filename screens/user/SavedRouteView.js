@@ -1,13 +1,59 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useContext } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
+import { AuthContext } from '../../context/AuthContext';
+import * as Notifications from 'expo-notifications';
 
 const SavedRouteView = ({ savedRoute, onClear }) => {
   const navigation = useNavigation();
+  const { updateSavedRoute } = useContext(AuthContext);
 
   const handleEditRoute = () => {
     navigation.navigate('MapScreen', { route: savedRoute });
+  };
+
+  const sendLocalNotification = async (title, body) => {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          sound: 'default',
+        },
+        trigger: { seconds: 1 }, // Déclencher immédiatement
+      });
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi de la notification:', error);
+      Alert.alert('Erreur', 'Impossible d\'envoyer la notification.');
+    }
+  };
+
+  const handleSimulateDriverAccept = async () => {
+    try {
+      // Mettre à jour le statut de la réservation
+      const updatedRoute = {
+        ...savedRoute,
+        reservation: {
+          ...savedRoute.reservation,
+          status: 'confirmed',
+        },
+      };
+
+      // Mettre à jour le trajet dans le contexte
+      updateSavedRoute(updatedRoute);
+
+      // Envoyer une notification locale
+      await sendLocalNotification(
+        'Trajet accepté',
+        `Le chauffeur ${savedRoute.reservation.driverName} a accepté votre trajet avec le taxi ${savedRoute.reservation.model} (${savedRoute.reservation.licensePlate}).`
+      );
+
+      Alert.alert('Succès', 'Le chauffeur a accepté le trajet.');
+    } catch (error) {
+      console.error('Erreur lors de la simulation de l\'acceptation:', error);
+      Alert.alert('Erreur', 'Impossible de simuler l\'acceptation du chauffeur.');
+    }
   };
 
   return (
@@ -25,18 +71,28 @@ const SavedRouteView = ({ savedRoute, onClear }) => {
             <Text style={styles.reservationText}>
               Chauffeur: {savedRoute.reservation.driverName}
             </Text>
-            <Text style={styles.statusText}>Statut: En attente de confirmation</Text>
+            <Text style={styles.statusText}>
+              Statut: {savedRoute.reservation.status === 'pending' ? 'En attente de confirmation' : 'Confirmé'}
+            </Text>
           </>
         )}
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.editButton} onPress={handleEditRoute}>
-            <Icon name="edit" size={20} color="#fff" style={styles.buttonIcon} />
-            <Text style={styles.buttonText}>Modifier</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.clearButton} onPress={onClear}>
-            <Icon name="delete" size={20} color="#fff" style={styles.buttonIcon} />
-            <Text style={styles.buttonText}>Supprimer</Text>
-          </TouchableOpacity>
+          {savedRoute.reservation && savedRoute.reservation.status === 'pending' && (
+            <>
+              <TouchableOpacity style={styles.editButton} onPress={handleEditRoute}>
+                <Icon name="edit" size={20} color="#fff" style={styles.buttonIcon} />
+                <Text style={styles.buttonText}>Modifier</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.clearButton} onPress={onClear}>
+                <Icon name="delete" size={20} color="#fff" style={styles.buttonIcon} />
+                <Text style={styles.buttonText}>Supprimer</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.acceptButton} onPress={handleSimulateDriverAccept}>
+                <Icon name="check-circle" size={20} color="#fff" style={styles.buttonIcon} />
+                <Text style={styles.buttonText}>Simuler Acceptation Chauffeur</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
     </View>
@@ -87,8 +143,9 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 20,
+    gap: 10,
     marginTop: 20,
   },
   editButton: {
@@ -104,6 +161,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F44336',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    elevation: 4,
+  },
+  acceptButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4CAF50',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,
