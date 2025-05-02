@@ -59,7 +59,6 @@ const MapScreen = () => {
   }
 
   const [routeData, setRouteData] = useState(initialRouteData);
-  // Initialiser la distance avec la valeur de initialRouteData.distance
   const [distance, setDistance] = useState(initialRouteData.distance || null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [editingMode, setEditingMode] = useState(null);
@@ -72,9 +71,8 @@ const MapScreen = () => {
 
   const mapRef = useRef(null);
 
-  // Reusable Haversine distance calculation (conservée pour les calculs de distance des taxis)
   const calculateDistance = (coord1, coord2) => {
-    const R = 6371e3; // Earth's radius in meters
+    const R = 6371e3;
     const lat1 = (coord1.latitude * Math.PI) / 180;
     const lat2 = (coord2.latitude * Math.PI) / 180;
     const deltaLat = ((coord2.latitude - coord1.latitude) * Math.PI) / 180;
@@ -85,7 +83,7 @@ const MapScreen = () => {
       Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const dist = R * c;
-    return (dist / 1000).toFixed(2); // Convert to km, round to 2 decimals
+    return (dist / 1000).toFixed(2);
   };
 
   useEffect(() => {
@@ -251,7 +249,6 @@ const MapScreen = () => {
       const data = await response.json();
       const displayName = data.display_name || 'Lieu inconnu';
 
-      // Recalculer la distance si les coordonnées changent
       let newDistance = routeData.distance;
       if (editingPointType === 'departure' && routeData.arrivalCoordinates) {
         newDistance = calculateDistance(
@@ -297,10 +294,8 @@ const MapScreen = () => {
     setIsLoadingTaxis(true);
 
     try {
-      // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Filter available taxis and calculate distance from departure point
       const taxis = mockTaxis
         .filter(taxi => taxi.status === 'disponible')
         .map(taxi => ({
@@ -320,7 +315,6 @@ const MapScreen = () => {
 
   const handleTaxiSelect = async (taxi) => {
     try {
-      // Simulate reservation
       const reservationData = {
         clientId: 'mock-client-id',
         taxiId: taxi._id,
@@ -329,18 +323,18 @@ const MapScreen = () => {
         routeCoordinates,
       };
 
-      // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const mockReservation = {
         _id: `reservation-${Date.now()}`,
         ...reservationData,
+        status: 'pending', // Ajouter le statut de réservation
       };
 
       Alert.alert('Succès', `Réservation confirmée avec le taxi ${taxi.model} (${taxi.licensePlate})`);
 
       navigation.navigate('MainTabs', {
-        screen: 'Accueil',
+        screen: 'Itinéraire',
         params: {
           savedRoute: {
             ...routeData,
@@ -352,6 +346,7 @@ const MapScreen = () => {
               licensePlate: taxi.licensePlate,
               model: taxi.model,
               color: taxi.color,
+              status: 'pending', // Inclure le statut dans la réservation
             },
           },
         },
@@ -512,7 +507,6 @@ const MapScreen = () => {
         </View>
       </Modal>
 
-      {/* Confirmation Modal */}
       <Modal
         animationType="slide"
         transparent={true}
