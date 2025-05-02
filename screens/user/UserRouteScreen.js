@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { AuthContext } from '../../context/AuthContext';
 import Icon from '@expo/vector-icons/MaterialIcons';
@@ -19,10 +19,7 @@ import SavedRouteView from './SavedRouteView';
 
 const UserRouteScreen = () => {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
-  const route = useRoute();
-  const { user } = useContext(AuthContext);
-  const [savedRoute, setSavedRoute] = useState(route.params?.savedRoute || null);
+  const { savedRoute, updateSavedRoute } = useContext(AuthContext);
   const [isDepartureModalVisible, setIsDepartureModalVisible] = useState(false);
   const [isArrivalModalVisible, setIsArrivalModalVisible] = useState(false);
   const [departure, setDeparture] = useState('');
@@ -33,12 +30,8 @@ const UserRouteScreen = () => {
   const [arrivalSuggestions, setArrivalSuggestions] = useState([]);
   const [arrivalLoading, setArrivalLoading] = useState(false);
   const [selectedArrival, setSelectedArrival] = useState(null);
-
-  useEffect(() => {
-    if (route.params?.savedRoute) {
-      setSavedRoute(route.params.savedRoute);
-    }
-  }, [route.params]);
+  const navigation = useNavigation();
+  const { user } = useContext(AuthContext);
 
   useEffect(() => {
     (async () => {
@@ -259,144 +252,157 @@ const UserRouteScreen = () => {
   };
 
   const handleClearRoute = () => {
-    setSavedRoute(null);
+    Alert.alert(
+      'Supprimer l’itinéraire',
+      'Voulez-vous vraiment supprimer cet itinéraire ?',
+      [
+        { text: 'Non', style: 'cancel' },
+        {
+          text: 'Oui',
+          onPress: () => updateSavedRoute(null),
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   return (
     <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
-      {savedRoute ? (
-        <SavedRouteView savedRoute={savedRoute} onClearRoute={handleClearRoute} />
-      ) : (
-        <View style={styles.container}>
-          <Text style={styles.title}>Itinéraire</Text>
-          <View style={styles.formContainer}>
-            <Text style={styles.modalTitle}>Les positions</Text>
+      <View style={styles.container}>
+        {savedRoute ? (
+          <SavedRouteView savedRoute={savedRoute} onClear={handleClearRoute} />
+        ) : (
+          <>
+            <Text style={styles.title}>Itinéraire</Text>
+            <View style={styles.formContainer}>
+              <Text style={styles.modalTitle}>Les positions</Text>
 
-            <TouchableOpacity
-              style={styles.inputContainer}
-              onPress={() => setIsDepartureModalVisible(true)}
-            >
-              <Icon name="location-on" size={24} color="#1E88E5" style={styles.inputIcon} />
-              <Text style={styles.inputText}>
-                {selectedDeparture ? selectedDeparture.display_name : 'Chargement...'}
-              </Text>
-            </TouchableOpacity>
-            {departureLoading && <ActivityIndicator size="small" color="#1E88E5" />}
-
-            <TouchableOpacity
-              style={styles.inputContainer}
-              onPress={() => setIsArrivalModalVisible(true)}
-            >
-              <Icon name="flag" size={24} color="#1E88E5" style={styles.inputIcon} />
-              <Text style={styles.inputText}>
-                {selectedArrival ? selectedArrival.display_name : 'Lieu d’arrivée'}
-              </Text>
-            </TouchableOpacity>
-            {arrivalLoading && <ActivityIndicator size="small" color="#1E88E5" />}
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.confirmButton} onPress={handleSaveRoute}>
-                <Icon name="check" size={20} color="#fff" style={styles.buttonIcon} />
-                <Text style={styles.buttonText}>Confirmer</Text>
+              <TouchableOpacity
+                style={styles.inputContainer}
+                onPress={() => setIsDepartureModalVisible(true)}
+              >
+                <Icon name="location-on" size={24} color="#1E88E5" style={styles.inputIcon} />
+                <Text style={styles.inputText}>
+                  {selectedDeparture ? selectedDeparture.display_name : 'Chargement...'}
+                </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.cancelButton} onPress={handleCancelCreate}>
-                <Icon name="close" size={20} color="#60a5fa" style={styles.buttonIcon} />
-                <Text style={styles.buttonCancelText}>Annuler</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+              {departureLoading && <ActivityIndicator size="small" color="#1E88E5" />}
 
-          <Modal
-            visible={isDepartureModalVisible}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={() => setIsDepartureModalVisible(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.suggestionsModalContent}>
-                <Text style={styles.modalTitle}>Suggestions de départ</Text>
-                <View style={styles.modalInputContainer}>
-                  <Icon name="search" size={24} color="#1E88E5" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="Rechercher un lieu de départ"
-                    value={departure}
-                    onChangeText={setDeparture}
-                  />
-                </View>
-                {departureLoading && <ActivityIndicator size="small" color="#1E88E5" />}
-                <View style={styles.suggestionsContainer}>
-                  <FlatList
-                    data={departureSuggestions}
-                    keyExtractor={(item) => item.place_id.toString()}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.suggestionItemTouchable}
-                        onPress={() => handleSelectDeparture(item)}
-                      >
-                        <Icon name="location-pin" size={20} color="#1E88E5" style={styles.suggestionIcon} />
-                        <Text style={styles.suggestionItem}>{item.display_name}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                </View>
-                <TouchableOpacity
-                  style={styles.modalCancelButton}
-                  onPress={() => setIsDepartureModalVisible(false)}
-                >
+              <TouchableOpacity
+                style={styles.inputContainer}
+                onPress={() => setIsArrivalModalVisible(true)}
+              >
+                <Icon name="flag" size={24} color="#1E88E5" style={styles.inputIcon} />
+                <Text style={styles.inputText}>
+                  {selectedArrival ? selectedArrival.display_name : 'Lieu d’arrivée'}
+                </Text>
+              </TouchableOpacity>
+              {arrivalLoading && <ActivityIndicator size="small" color="#1E88E5" />}
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={styles.confirmButton} onPress={handleSaveRoute}>
+                  <Icon name="check" size={20} color="#fff" style={styles.buttonIcon} />
+                  <Text style={styles.buttonText}>Confirmer</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelCreate}>
                   <Icon name="close" size={20} color="#60a5fa" style={styles.buttonIcon} />
-                  <Text style={styles.buttonClosetext}>Fermer</Text>
+                  <Text style={styles.buttonCancelText}>Annuler</Text>
                 </TouchableOpacity>
               </View>
             </View>
-          </Modal>
 
-          <Modal
-            visible={isArrivalModalVisible}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={() => setIsArrivalModalVisible(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.suggestionsModalContent}>
-                <Text style={styles.modalTitle}>Suggestions d’arrivée</Text>
-                <View style={styles.modalInputContainer}>
-                  <Icon name="search" size={24} color="#1E88E5" style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="Rechercher un lieu d’arrivée"
-                    value={arrival}
-                    onChangeText={setArrival}
-                  />
+            <Modal
+              visible={isDepartureModalVisible}
+              animationType="slide"
+              transparent={true}
+              onRequestClose={() => setIsDepartureModalVisible(false)}
+            >
+              <View style={styles.modalOverlay}>
+                <View style={styles.suggestionsModalContent}>
+                  <Text style={styles.modalTitle}>Suggestions de départ</Text>
+                  <View style={styles.modalInputContainer}>
+                    <Icon name="search" size={24} color="#1E88E5" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="Rechercher un lieu de départ"
+                      value={departure}
+                      onChangeText={setDeparture}
+                    />
+                  </View>
+                  {departureLoading && <ActivityIndicator size="small" color="#1E88E5" />}
+                  <View style={styles.suggestionsContainer}>
+                    <FlatList
+                      data={departureSuggestions}
+                      keyExtractor={(item) => item.place_id.toString()}
+                      renderItem={({ item }) => (
+                        <TouchableOpacity
+                          style={styles.suggestionItemTouchable}
+                          onPress={() => handleSelectDeparture(item)}
+                        >
+                          <Icon name="location-pin" size={20} color="#1E88E5" style={styles.suggestionIcon} />
+                          <Text style={styles.suggestionItem}>{item.display_name}</Text>
+                        </TouchableOpacity>
+                      )}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.modalCancelButton}
+                    onPress={() => setIsDepartureModalVisible(false)}
+                  >
+                    <Icon name="close" size={20} color="#60a5fa" style={styles.buttonIcon} />
+                    <Text style={styles.buttonClosetext}>Fermer</Text>
+                  </TouchableOpacity>
                 </View>
-                {arrivalLoading && <ActivityIndicator size="small" color="#1E88E5" />}
-                <View style={styles.suggestionsContainer}>
-                  <FlatList
-                    data={arrivalSuggestions}
-                    keyExtractor={(item) => item.place_id.toString()}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.suggestionItemTouchable}
-                        onPress={() => handleSelectArrival(item)}
-                      >
-                        <Icon name="location-pin" size={20} color="#1E88E5" style={styles.suggestionIcon} />
-                        <Text style={styles.suggestionItem}>{item.display_name}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                </View>
-                <TouchableOpacity
-                  style={styles.modalCancelButton}
-                  onPress={() => setIsArrivalModalVisible(false)}
-                >
-                  <Icon name="close" size={20} color="#60a5fa" style={styles.buttonIcon} />
-                  <Text style={styles.buttonClosetext}>Fermer</Text>
-                </TouchableOpacity>
               </View>
-            </View>
-          </Modal>
-        </View>
-      )}
+            </Modal>
+
+            <Modal
+              visible={isArrivalModalVisible}
+              animationType="slide"
+              transparent={true}
+              onRequestClose={() => setIsArrivalModalVisible(false)}
+            >
+              <View style={styles.modalOverlay}>
+                <View style={styles.suggestionsModalContent}>
+                  <Text style={styles.modalTitle}>Suggestions d’arrivée</Text>
+                  <View style={styles.modalInputContainer}>
+                    <Icon name="search" size={24} color="#1E88E5" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.modalInput}
+                      placeholder="Rechercher un lieu d’arrivée"
+                      value={arrival}
+                      onChangeText={setArrival}
+                    />
+                  </View>
+                  {arrivalLoading && <ActivityIndicator size="small" color="#1E88E5" />}
+                  <View style={styles.suggestionsContainer}>
+                    <FlatList
+                      data={arrivalSuggestions}
+                      keyExtractor={(item) => item.place_id.toString()}
+                      renderItem={({ item }) => (
+                        <TouchableOpacity
+                          style={styles.suggestionItemTouchable}
+                          onPress={() => handleSelectArrival(item)}
+                        >
+                          <Icon name="location-pin" size={20} color="#1E88E5" style={styles.suggestionIcon} />
+                          <Text style={styles.suggestionItem}>{item.display_name}</Text>
+                        </TouchableOpacity>
+                      )}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.modalCancelButton}
+                    onPress={() => setIsArrivalModalVisible(false)}
+                  >
+                    <Icon name="close" size={20} color="#60a5fa" style={styles.buttonIcon} />
+                    <Text style={styles.buttonClosetext}>Fermer</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          </>
+        )}
+      </View>
     </SafeAreaView>
   );
 };

@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Alert, Modal, FlatList, ActivityIndicator } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import Icon from '@expo/vector-icons/MaterialIcons';
+import { AuthContext } from '../../context/AuthContext';
 
-// Mock taxi data with coordinates
 const mockTaxis = [
   {
     _id: 'taxi1',
@@ -48,6 +48,7 @@ const MapScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { route: initialRouteData } = route.params || {};
+  const { updateSavedRoute } = useContext(AuthContext);
 
   if (!initialRouteData || (!initialRouteData.departureCoordinates && !initialRouteData.arrivalCoordinates)) {
     console.error("Missing or invalid initial route data");
@@ -262,23 +263,18 @@ const MapScreen = () => {
         );
       }
 
-      if (editingPointType === 'departure') {
-        setRouteData({
-          ...routeData,
-          departure: displayName,
-          departureCoordinates: { latitude, longitude },
-        });
-        setDistance(newDistance);
-        Alert.alert('Point modifié', `Le point de départ a été défini sur : ${displayName}`);
-      } else if (editingPointType === 'arrival') {
-        setRouteData({
-          ...routeData,
-          arrival: displayName,
-          arrivalCoordinates: { latitude, longitude },
-        });
-        setDistance(newDistance);
-        Alert.alert('Point modifié', `Le point de destination a été défini sur : ${displayName}`);
-      }
+      const updatedRoute = {
+        ...routeData,
+        ...(editingPointType === 'departure'
+          ? { departure: displayName, departureCoordinates: { latitude, longitude } }
+          : { arrival: displayName, arrivalCoordinates: { latitude, longitude } }),
+        distance: newDistance,
+      };
+
+      setRouteData(updatedRoute);
+      setDistance(newDistance);
+      updateSavedRoute(updatedRoute); // Mettre à jour l'itinéraire global
+      Alert.alert('Point modifié', `Le point de ${editingPointType === 'departure' ? 'départ' : 'destination'} a été défini sur : ${displayName}`);
     } catch (error) {
       console.error("Reverse geocoding error:", error);
       Alert.alert('Erreur', `Impossible de récupérer le nom du lieu: ${error.message}.`);
@@ -328,28 +324,27 @@ const MapScreen = () => {
       const mockReservation = {
         _id: `reservation-${Date.now()}`,
         ...reservationData,
-        status: 'pending', // Ajouter le statut de réservation
       };
 
+      const updatedRoute = {
+        ...routeData,
+        distance,
+        routeCoordinates,
+        reservation: {
+          taxiId: taxi._id,
+          driverName: taxi.driverId.name,
+          licensePlate: taxi.licensePlate,
+          model: taxi.model,
+          color: taxi.color,
+        },
+      };
+
+      updateSavedRoute(updatedRoute); // Sauvegarder l'itinéraire avec la réservation
       Alert.alert('Succès', `Réservation confirmée avec le taxi ${taxi.model} (${taxi.licensePlate})`);
 
       navigation.navigate('MainTabs', {
-        screen: 'Itinéraire',
-        params: {
-          savedRoute: {
-            ...routeData,
-            distance,
-            routeCoordinates,
-            reservation: {
-              taxiId: taxi._id,
-              driverName: taxi.driverId.name,
-              licensePlate: taxi.licensePlate,
-              model: taxi.model,
-              color: taxi.color,
-              status: 'pending', // Inclure le statut dans la réservation
-            },
-          },
-        },
+        screen: 'Accueil',
+        params: { savedRoute: updatedRoute },
       });
     } catch (error) {
       console.error('Error simulating reservation:', error);
@@ -370,6 +365,7 @@ const MapScreen = () => {
         {
           text: 'Oui',
           onPress: () => {
+            updateSavedRoute(null); // Supprimer l'itinéraire
             navigation.navigate('MainTabs', { screen: 'Itinéraire' });
           },
         },

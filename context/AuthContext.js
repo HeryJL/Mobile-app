@@ -1,16 +1,38 @@
 import React, { createContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import mockUsers from '../data/mockUsers';
 import mockDrivers from '../data/mockDrivers';
 
 export const AuthContext = createContext();
-const API_BASE_URL = 'http://192.168.0.181:5000/users'
+const API_BASE_URL = 'http://192.168.0.181:5000/users';
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userType, setUserType] = useState(null); // Peut être null initialement
+  const [savedRoute, setSavedRoute] = useState(null); // État pour l'itinéraire sauvegardé
 
+  // Charger les données persistantes au démarrage
   useEffect(() => {
-    setIsLoading(false); // Simuler la fin du chargement initial
+    const loadStoredData = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem('user');
+        const storedRoute = await AsyncStorage.getItem('savedRoute');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          setUserType(parsedUser.role === 'driver' ? 'driver' : 'user');
+        }
+        if (storedRoute) {
+          setSavedRoute(JSON.parse(storedRoute));
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des données:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadStoredData();
   }, []);
 
   const login = async (email, password) => {
@@ -21,17 +43,19 @@ export const AuthProvider = ({ children }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({email, password}),
+        body: JSON.stringify({ email, password }),
       });
-  
+
       const data = await response.json();
-  
+
       if (!response.ok) {
         throw new Error(data.error || 'Identifiants incorrects.');
       }
-  
+
       setUser(data.user);
       setUserType(data.user.role === 'driver' ? 'driver' : 'user');
+      // Sauvegarder l'utilisateur dans AsyncStorage
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
       return data.user.role === 'driver' ? 'driver' : 'user';
     } catch (error) {
       throw error;
@@ -42,38 +66,57 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      // 1. Appel API au backend pour déconnexion
+      // Appel API pour déconnexion
       const response = await fetch(`${API_BASE_URL}/logout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token}` // Envoyez le token JWT
-        }
+          'Authorization': `Bearer ${user?.token}`,
+        },
       });
-  
+
       const data = await response.json();
-  
+
       if (!response.ok) {
         throw new Error(data.error || 'Échec de la déconnexion');
-        
       }
-  
-      // 2. Nettoyage du state local
+
+      // Nettoyer le state local
       setUser(null);
       setUserType(null);
-  
-      // 3. Optionnel: Supprimer le token du stockage local si vous en utilisez un
-      // await AsyncStorage.removeItem('authToken');
-  
-      return true; // Indique que la déconnexion a réussi
+      setSavedRoute(null);
+
+      // Supprimer les données d'AsyncStorage
+      await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('savedRoute');
+
+      return true;
     } catch (error) {
-      console.error("Erreur lors de la déconnexion:", error);
-      // Même en cas d'erreur API, on nettoie le frontend
+      console.error('Erreur lors de la déconnexion:', error);
+      // Nettoyer le frontend même en cas d'erreur
       setUser(null);
       setUserType(null);
+      setSavedRoute(null);
+      await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('savedRoute');
       throw error;
     }
   };
+
+  // Fonction pour mettre à jour l'itinéraire sauvegardé
+  const updateSavedRoute = async (route) => {
+    try {
+      setSavedRoute(route);
+      if (route) {
+        await AsyncStorage.setItem('savedRoute', JSON.stringify(route));
+      } else {
+        await AsyncStorage.removeItem('savedRoute');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de l\'itinéraire:', error);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -83,6 +126,8 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         userToken: user?.id, // Utiliser l'ID de l'utilisateur prédéfini comme token
+        savedRoute,
+        updateSavedRoute,
       }}
     >
       {children}

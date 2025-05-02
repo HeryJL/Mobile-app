@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Text, StyleSheet, View, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { PROVIDER_DEFAULT, PROVIDER_GOOGLE, Marker, Polyline, Callout } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import Icon from '@expo/vector-icons/MaterialIcons';
+import { AuthContext } from '../../context/AuthContext';
 
 const UserHomeScreen = () => {
   const insets = useSafeAreaInsets();
   const route = useRoute();
   const navigation = useNavigation();
+  const { savedRoute } = useContext(AuthContext);
   const [location, setLocation] = useState(null);
-  const [savedRoute, setSavedRoute] = useState(null);
   const [showRouteDetails, setShowRouteDetails] = useState(false);
   const mapRef = useRef(null);
 
@@ -44,56 +45,22 @@ const UserHomeScreen = () => {
   }, []);
 
   useEffect(() => {
-    console.log('Route params in UserHomeScreen:', route.params);
-    if (route.params?.savedRoute) {
-      const { savedRoute } = route.params;
-      console.log('Saved route in UserHomeScreen:', savedRoute);
-
-      const parsedRoute = {
-        ...savedRoute,
-        departureCoordinates: {
-          latitude: parseFloat(savedRoute.departureCoordinates.latitude),
-          longitude: parseFloat(savedRoute.departureCoordinates.longitude),
-        },
-        arrivalCoordinates: {
-          latitude: parseFloat(savedRoute.arrivalCoordinates.latitude),
-          longitude: parseFloat(savedRoute.arrivalCoordinates.longitude),
-        },
-        routeCoordinates: Array.isArray(savedRoute.routeCoordinates)
-          ? savedRoute.routeCoordinates.map(coord => ({
-              latitude: parseFloat(coord.latitude),
-              longitude: parseFloat(coord.longitude),
-            }))
-          : [],
-        reservation: savedRoute.reservation || null,
-      };
-
-      if (
-        isValidCoordinate(parsedRoute.departureCoordinates) &&
-        isValidCoordinate(parsedRoute.arrivalCoordinates)
-      ) {
-        console.log('Parsed route set:', parsedRoute);
-        setSavedRoute(parsedRoute);
-        if (mapRef.current) {
-          const coordinates = [
-            parsedRoute.departureCoordinates,
-            parsedRoute.arrivalCoordinates,
-          ];
-          if (parsedRoute.routeCoordinates.length > 0) {
-            coordinates.push(...parsedRoute.routeCoordinates);
-          }
-          console.log('Fitting to coordinates:', coordinates);
-          mapRef.current.fitToCoordinates(coordinates, {
-            edgePadding: { top: 70, right: 70, bottom: 70, left: 70 },
-            animated: true,
-          });
-        }
-      } else {
-        console.error('Invalid coordinates in savedRoute:', parsedRoute);
-        Alert.alert('Erreur', 'Les données de l’itinéraire sont incomplètes.');
+    if (savedRoute && mapRef.current) {
+      const coordinates = [
+        savedRoute.departureCoordinates,
+        savedRoute.arrivalCoordinates,
+      ];
+      if (savedRoute.routeCoordinates.length > 0) {
+        coordinates.push(...savedRoute.routeCoordinates);
       }
+      mapRef.current.fitToCoordinates(coordinates, {
+        edgePadding: { top: 70, right: 70, bottom: 70, left: 70 },
+        animated: true,
+      });
+    } else if (location && mapRef.current) {
+      mapRef.current.animateToRegion(location, 1000);
     }
-  }, [route.params]);
+  }, [savedRoute, location]);
 
   const fallbackRegion = {
     latitude: -18.8792,
@@ -121,7 +88,6 @@ const UserHomeScreen = () => {
         {
           text: 'Oui',
           onPress: () => {
-            setSavedRoute(null);
             setShowRouteDetails(false);
             if (location && mapRef.current) {
               mapRef.current.animateToRegion(location, 1000);
@@ -144,18 +110,16 @@ const UserHomeScreen = () => {
   };
 
   const isValidCoordinate = (coord) => {
-    const valid = (
+    return (
       coord &&
       typeof coord.latitude === 'number' &&
       typeof coord.longitude === 'number' &&
       !isNaN(coord.latitude) &&
       !isNaN(coord.longitude)
     );
-    console.log('isValidCoordinate:', coord, valid);
-    return valid;
   };
 
-leMarkerPress = (type) => {
+  const handleMarkerPress = (type) => {
     console.log(`${type} marker pressed`);
   };
 
@@ -265,6 +229,7 @@ leMarkerPress = (type) => {
                 <Text style={styles.reservationText}>
                   Chauffeur: {savedRoute.reservation.driverName}
                 </Text>
+                <Text style={styles.statusText}>Statut: En attente de confirmation</Text>
               </>
             )}
             <View style={styles.routeActions}>
@@ -392,6 +357,12 @@ const styles = StyleSheet.create({
     color: '#555',
     marginBottom: 8,
   },
+  statusText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFA500',
+    marginBottom: 12,
+  },
   routeActions: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -464,6 +435,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
-
 
 export default UserHomeScreen;

@@ -46,30 +46,7 @@ const UserProfileScreen = () => {
             <Text style={styles.title}>{user?.name || 'Utilisateur'}</Text>
             <Text style={styles.subtitle}>Membre depuis 2023</Text>
           </View>
-
-          {/* Carte de fidélité */}
-          <View style={styles.loyaltyCard}>
-            <LinearGradient
-              colors={['#60a5fa', '#3b82f6']}
-              style={styles.loyaltyGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <View style={styles.loyaltyContent}>
-                <View>
-                  <Text style={styles.loyaltyTitle}>Votre carte de fidélité</Text>
-                  <Text style={styles.loyaltyPoints}>125 points</Text>
-                </View>
-                <View style={styles.loyaltyProgress}>
-                  <View style={styles.progressBar}>
-                    <View style={[styles.progressFill, { width: '65%' }]} />
-                  </View>
-                  <Text style={styles.progressText}>65% vers votre prochaine récompense</Text>
-                </View>
-              </View>
-            </LinearGradient>
-          </View>
-
+          
           {/* Informations personnelles */}
           {user && (
             <View style={styles.profileCard}>
