@@ -83,7 +83,7 @@ const LoginScreen = ({ navigation }) => {
             <Ionicons name="car-sport" size={72} color="#ffffff" />
             <View style={styles.logoPulse} />
           </View>
-          <Text style={styles.title}>MoraTaxi</Text>
+          <Text style={styles.title}>Alaivô</Text>
           <Text style={styles.subtitle}>Votre voyage, simplifié</Text>
         </Animated.View>
 

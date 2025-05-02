@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Alert, Modal, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Alert, Modal, FlatList, ActivityIndicator, Platform } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { AuthContext } from '../../context/AuthContext';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
 
 const mockTaxis = [
   {
@@ -43,6 +45,56 @@ const mockTaxis = [
     coordinates: { latitude: -18.8750, longitude: 47.5150 },
   },
 ];
+const requestPermissions = async () => {
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (status !== 'granted') {
+    Alert.alert(
+      'Permissions requises',
+      'Veuillez activer les notifications dans les paramètres de votre appareil.',
+      [
+        { text: 'OK', style: 'cancel' },
+        {
+          text: 'Ouvrir les paramètres',
+          onPress: () => Linking.openSettings(),
+        },
+      ]
+    );
+  }
+  return status;
+};
+
+useEffect(() => {
+  const setupNotifications = async () => {
+    if (!Device.isDevice) {
+      console.log('Notifications require a physical device');
+      return;
+    }
+
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'default',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF231F7C',
+      });
+    }
+
+    const status = await requestPermissions();
+    if (status !== 'granted') {
+      console.log('Notification permissions not granted');
+    }
+  };
+
+  setupNotifications();
+}, []);
+// Configurer le gestionnaire de notifications
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 const MapScreen = () => {
   const route = useRoute();
@@ -60,7 +112,7 @@ const MapScreen = () => {
   }
 
   const [routeData, setRouteData] = useState(initialRouteData);
-  const [originalRouteData] = useState(initialRouteData); // Conserver l'itinéraire initial
+  const [originalRouteData] = useState(initialRouteData);
   const [distance, setDistance] = useState(initialRouteData.distance || null);
   const [routeCoordinates, setRouteCoordinates] = useState(initialRouteData.routeCoordinates || []);
   const [editingMode, setEditingMode] = useState(null);
@@ -72,7 +124,60 @@ const MapScreen = () => {
   const [selectedTaxiForReservation, setSelectedTaxiForReservation] = useState(null);
 
   const mapRef = useRef(null);
-  const isEditingExistingRoute = !!initialRouteData.reservation; // Détecter si on modifie un itinéraire existant
+  const isEditingExistingRoute = !!initialRouteData.reservation;
+
+  // Demander les permissions pour les notifications et configurer le canal Android
+  useEffect(() => {
+    const setupNotifications = async () => {
+      if (!Device.isDevice) {
+        console.log('Notifications require a physical device');
+        return;
+      }
+
+      // Configurer le canal de notification pour Android
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+        });
+      }
+
+      // Vérifier et demander les permissions
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+
+      if (finalStatus !== 'granted') {
+        Alert.alert('Erreur', 'Les permissions pour les notifications sont requises.');
+        return;
+      }
+    };
+
+    setupNotifications();
+  }, []);
+
+  // Fonction pour envoyer une notification locale
+  const sendLocalNotification = async (title, body) => {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          sound: 'default',
+        },
+        trigger: { seconds: 1 }, // Déclencher immédiatement (1 seconde de délai)
+      });
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi de la notification:', error);
+      Alert.alert('Erreur', 'Impossible d\'envoyer la notification.');
+    }
+  };
 
   const calculateDistance = (coord1, coord2) => {
     const R = 6371e3;
@@ -296,6 +401,11 @@ const MapScreen = () => {
         routeCoordinates,
       };
       updateSavedRoute(updatedRoute);
+      // Envoyer une notification locale
+      await sendLocalNotification(
+        'Itinéraire modifié',
+        'Votre itinéraire a été modifié avec succès.'
+      );
       Alert.alert('Succès', 'Les modifications de l\'itinéraire ont été enregistrées.');
       navigation.navigate('MainTabs', {
         screen: 'Accueil',
@@ -356,6 +466,11 @@ const MapScreen = () => {
       };
 
       updateSavedRoute(updatedRoute);
+      // Envoyer une notification locale
+      await sendLocalNotification(
+        'Réservation confirmée',
+        `Votre trajet avec le taxi ${taxi.model} (${taxi.licensePlate}) a été enregistré.`
+      );
       Alert.alert('Succès', `Réservation confirmée avec le taxi ${taxi.model} (${taxi.licensePlate})`);
 
       navigation.navigate('MainTabs', {
@@ -384,12 +499,10 @@ const MapScreen = () => {
           text: 'Oui',
           onPress: () => {
             if (isEditingExistingRoute) {
-              // Restaurer l'itinéraire initial en mode modification
               setRouteData(originalRouteData);
               updateSavedRoute(originalRouteData);
               navigation.navigate('MainTabs', { screen: 'Itinéraire' });
             } else {
-              // Supprimer l'itinéraire en mode création
               updateSavedRoute(null);
               navigation.navigate('MainTabs', { screen: 'Itinéraire' });
             }
