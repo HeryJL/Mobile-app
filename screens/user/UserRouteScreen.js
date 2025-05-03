@@ -273,10 +273,10 @@ const UserRouteScreen = () => {
           <SavedRouteView savedRoute={savedRoute} onClear={handleClearRoute} />
         ) : (
           <>
-            <Text style={styles.title}>Itinéraire</Text>
             <View style={styles.formContainer}>
               <Text style={styles.modalTitle}>Les positions</Text>
 
+              <Text style={styles.inputLabel}>Départ</Text>
               <TouchableOpacity
                 style={styles.inputContainer}
                 onPress={() => setIsDepartureModalVisible(true)}
@@ -288,6 +288,7 @@ const UserRouteScreen = () => {
               </TouchableOpacity>
               {departureLoading && <ActivityIndicator size="small" color="#1E88E5" />}
 
+              <Text style={styles.inputLabel}>Arrivée</Text>
               <TouchableOpacity
                 style={styles.inputContainer}
                 onPress={() => setIsArrivalModalVisible(true)}
@@ -302,7 +303,7 @@ const UserRouteScreen = () => {
               <View style={styles.modalActions}>
                 <TouchableOpacity style={styles.confirmButton} onPress={handleSaveRoute}>
                   <Icon name="check" size={20} color="#fff" style={styles.buttonIcon} />
-                  <Text style={styles.buttonText}>Confirmer</Text>
+                  <Text style={styles.can}>Confirmer</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.cancelButton} onPress={handleCancelCreate}>
                   <Icon name="close" size={20} color="#60a5fa" style={styles.buttonIcon} />
@@ -355,7 +356,6 @@ const UserRouteScreen = () => {
                 </View>
               </View>
             </Modal>
-
             <Modal
               visible={isArrivalModalVisible}
               animationType="slide"
@@ -427,23 +427,27 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     backgroundColor: '#fff',
-    padding: 24,
-    borderRadius: 16,
-    elevation: 10,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 10,
+    padding: 20,
     marginBottom: 24,
     width: '100%',
-    minHeight: '60%',
+    minHeight: '90%',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalTitle: {
     fontSize: 24,
     fontWeight: '600',
-    marginBottom: 15,
+    marginBottom: 25,
     textAlign: 'center',
     color: '#1E88E5',
+  },
+  inputLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1E88E5',
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+    marginTop: 10,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -454,7 +458,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 16,
     marginBottom: 18,
-    marginTop: 10,
     backgroundColor: '#f8fafc',
     elevation: 2,
     width: '100%',

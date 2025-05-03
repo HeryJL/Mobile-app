@@ -1,8 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import mockUsers from '../data/mockUsers';
-import mockDrivers from '../data/mockDrivers';
-
 export const AuthContext = createContext();
 const API_BASE_URL = 'http://192.168.0.181:5000/users';
 
