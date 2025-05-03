@@ -9,7 +9,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { AuthContext } from '../../context/AuthContext';
 
-// Données simulées des taxis (extraites de MapScreen.js)
+// Données simulées des taxis
 const mockTaxis = [
   {
     _id: 'taxi1',
@@ -119,7 +119,7 @@ const UserHomeScreen = () => {
           latitudeDelta: 0.005,
           longitudeDelta: 0.005,
         };
-        console.log('User Location:', userLocation); // Log pour déboguer
+        console.log('User Location:', userLocation);
         setLocation(userLocation);
 
         if (mapRef.current) {
@@ -170,30 +170,33 @@ const UserHomeScreen = () => {
       const taxi = mockTaxis.find(t => t._id === savedRoute.reservation.taxiId);
       if (taxi) {
         setDriverLocation(taxi.coordinates);
-        console.log('Driver Location:', taxi.coordinates); // Log pour déboguer
+        console.log('Driver Location:', taxi.coordinates);
 
-        // Simuler le déplacement du chauffeur vers la destination
+        // Simuler le déplacement du chauffeur vers le point de départ
         const interval = setInterval(() => {
           setDriverLocation(prev => {
-            if (!prev || !savedRoute.arrivalCoordinates) return prev;
+            if (!prev || !savedRoute.departureCoordinates) return prev;
 
             // Calculer la distance restante
-            const distance = calculateDistance(prev, savedRoute.arrivalCoordinates);
+            const distance = calculateDistance(prev, savedRoute.departureCoordinates);
             if (distance < 50) { // Seuil de 50 mètres
               clearInterval(interval);
               sendLocalNotification(
                 'Chauffeur arrivé',
-                `Votre chauffeur ${savedRoute.reservation.driverName} est arrivé à votre destination.`
+                `Votre chauffeur ${savedRoute.reservation.driverName} est arrivé au point de départ.`
               );
-              Alert.alert('Arrivée', 'Votre chauffeur est arrivé à votre destination.');
-              updateSavedRoute(null); // Supprimer le trajet
+              Alert.alert('Arrivée', 'Votre chauffeur est arrivé au point de départ.');
+              // Ne pas supprimer le trajet ici, car il continue vers l'arrivée
               return prev;
             }
 
-            // Simuler un déplacement progressif
-            const speed = 0.0001; // Ajuster pour simuler la vitesse
-            const deltaLat = (savedRoute.arrivalCoordinates.latitude - prev.latitude) * speed;
-            const deltaLon = (savedRoute.arrivalCoordinates.longitude - prev.longitude) * speed;
+            // Calculer le temps estimé total en secondes
+            const estimatedTimeSeconds = (savedRoute.reservation.estimatedTime || 10) * 60;
+            // Ajuster la vitesse pour atteindre le point de départ en estimatedTime
+            const speed = distance / estimatedTimeSeconds / 1000; // Vitesse ajustée pour le temps restant
+
+            const deltaLat = (savedRoute.departureCoordinates.latitude - prev.latitude) * speed;
+            const deltaLon = (savedRoute.departureCoordinates.longitude - prev.longitude) * speed;
 
             return {
               latitude: prev.latitude + deltaLat,
@@ -212,7 +215,7 @@ const UserHomeScreen = () => {
   // Mettre à jour la carte pour inclure la position du chauffeur
   useEffect(() => {
     if (savedRoute && mapRef.current) {
-      console.log('Saved Route Coordinates:', savedRoute); // Log pour déboguer
+      console.log('Saved Route Coordinates:', savedRoute);
       const coordinates = [
         savedRoute.departureCoordinates,
         savedRoute.arrivalCoordinates,
@@ -297,7 +300,9 @@ const UserHomeScreen = () => {
           <Icon name="map" size={24} color="#fff" style={styles.headerIcon} />
           <Text style={styles.greetingText}>Bonjour, prêt à rouler ?</Text>
           {savedRoute && savedRoute.reservation && savedRoute.reservation.status === 'confirmed' && (
-            <Text style={styles.taxiStatusText}>{"\n"}Votre taxi arrive, veuillez patienter un peu</Text>
+            <Text style={styles.taxiStatusText}>
+              {"\n"}Votre taxi arrive dans environ {savedRoute.reservation.estimatedTime || '10'} min
+            </Text>
           )}
         </View>
         <TouchableOpacity style={styles.partirButton} onPress={handlePartir}>
@@ -375,6 +380,9 @@ const UserHomeScreen = () => {
             <Text style={styles.routeText}>Départ: {savedRoute.departure || 'Non spécifié'}</Text>
             <Text style={styles.routeText}>Arrivée: {savedRoute.arrival || 'Non spécifié'}</Text>
             <Text style={styles.routeText}>Distance: {savedRoute.distance || 'Non calculée'} km</Text>
+            {savedRoute.duration && (
+              <Text style={styles.routeText}>Durée: {savedRoute.duration} min</Text>
+            )}
             {savedRoute.reservation && (
               <>
                 <Text style={styles.reservationText}>
@@ -383,6 +391,11 @@ const UserHomeScreen = () => {
                 <Text style={styles.reservationText}>
                   Chauffeur: {savedRoute.reservation.driverName}
                 </Text>
+                {savedRoute.reservation.estimatedTime && savedRoute.reservation.status === 'confirmed' && (
+                  <Text style={styles.reservationText}>
+                    Temps estimé d'arrivée : {savedRoute.reservation.estimatedTime} min
+                  </Text>
+                )}
                 <Text
                   style={[
                     styles.statusText,
@@ -464,7 +477,7 @@ const styles = StyleSheet.create({
   taxiStatusText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#471',
+    color: '#fff',
     marginLeft: 10,
   },
   partirButton: {

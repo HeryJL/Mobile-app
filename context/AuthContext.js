@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
-          setUserType(parsedUser.role === 'driver' ? 'driver' : 'user');
+          setUserType(parsedUser.role === 'chauffeur' ? 'chauffeur' : 'user');
         }
         if (storedRoute) {
           setSavedRoute(JSON.parse(storedRoute));
@@ -50,10 +50,10 @@ export const AuthProvider = ({ children }) => {
       }
 
       setUser(data.user);
-      setUserType(data.user.role === 'driver' ? 'driver' : 'user');
+      setUserType(data.user.role === 'chauffeur' ? 'chauffeur' : 'user');
       // Sauvegarder l'utilisateur dans AsyncStorage
       await AsyncStorage.setItem('user', JSON.stringify(data.user));
-      return data.user.role === 'driver' ? 'driver' : 'user';
+      return data.user.role === 'chauffeur' ? 'chauffeur' : 'user';
     } catch (error) {
       throw error;
     } finally {

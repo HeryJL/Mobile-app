@@ -35,7 +35,7 @@ const AppNavigator = () => {
     <NavigationContainer>
       <SafeAreaView style={styles.safeArea}>
         {user ? (
-          userType === 'driver' ? (
+          userType === 'chauffeur' ? (
             <DriverTabNavigator />
           ) : (
             <UserTabNavigator/>

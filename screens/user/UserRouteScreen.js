@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import {
   View,
@@ -33,6 +34,7 @@ const UserRouteScreen = () => {
   const navigation = useNavigation();
   const { user } = useContext(AuthContext);
 
+  // Obtenir la position actuelle de l'utilisateur au chargement
   useEffect(() => {
     (async () => {
       try {
@@ -69,6 +71,7 @@ const UserRouteScreen = () => {
     })();
   }, [user]);
 
+  // Fonction pour récupérer les suggestions de lieux depuis Nominatim
   const fetchSuggestions = useCallback(async (text, setResults, setLoading) => {
     if (text.length < 3) {
       setResults([]);
@@ -79,7 +82,7 @@ const UserRouteScreen = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}%&format=json&addressdetails=1&limit=10`,
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&addressdetails=1&limit=10`,
         {
           headers: {
             'User-Agent': 'ReactNativeApp/1.0 (' + user?.email + ')',
@@ -96,6 +99,7 @@ const UserRouteScreen = () => {
     }
   }, [user]);
 
+  // Déclencher la recherche de suggestions pour le départ
   useEffect(() => {
     const timer = setTimeout(() => {
       if (departure && departure !== selectedDeparture?.display_name) {
@@ -105,15 +109,19 @@ const UserRouteScreen = () => {
     return () => clearTimeout(timer);
   }, [departure, fetchSuggestions, selectedDeparture]);
 
+  // Déclencher la recherche de suggestions pour l'arrivée
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchSuggestions(arrival, setArrivalSuggestions, setArrivalLoading);
+      if (arrival && arrival !== selectedArrival?.display_name) {
+        fetchSuggestions(arrival, setArrivalSuggestions, setArrivalLoading);
+      }
     }, 500);
     return () => clearTimeout(timer);
-  }, [arrival, fetchSuggestions]);
+  }, [arrival, fetchSuggestions, selectedArrival]);
 
+  // Calculer la distance entre deux coordonnées
   const calculateDistance = (coord1, coord2) => {
-    const R = 6371e3;
+    const R = 6371e3; // Rayon de la Terre en mètres
     const lat1 = (coord1.latitude * Math.PI) / 180;
     const lat2 = (coord2.latitude * Math.PI) / 180;
     const deltaLat = ((coord2.latitude - coord1.latitude) * Math.PI) / 180;
@@ -124,9 +132,10 @@ const UserRouteScreen = () => {
       Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const dist = R * c;
-    return (dist / 1000).toFixed(2);
+    return (dist / 1000).toFixed(2); // Distance en kilomètres
   };
 
+  // Sauvegarder l'itinéraire et naviguer vers MapScreen
   const handleSaveRoute = async () => {
     if (selectedDeparture && selectedArrival) {
       const departureLat = parseFloat(selectedDeparture.lat);
@@ -214,6 +223,7 @@ const UserRouteScreen = () => {
           longitude: arrivalLon,
         },
         distance: distance,
+        duration: null, // Initialisé à null, sera calculé dans MapScreen.js
         routeCoordinates: [],
       };
 
@@ -229,6 +239,7 @@ const UserRouteScreen = () => {
     }
   };
 
+  // Annuler la création de l'itinéraire
   const handleCancelCreate = () => {
     setDeparture(selectedDeparture?.display_name || '');
     setArrival('');
@@ -237,267 +248,238 @@ const UserRouteScreen = () => {
     setIsArrivalModalVisible(false);
   };
 
+  // Sélectionner un lieu de départ
   const handleSelectDeparture = (item) => {
-    setDeparture(item.display_name);
     setSelectedDeparture(item);
+    setDeparture(item.display_name);
     setDepartureSuggestions([]);
     setIsDepartureModalVisible(false);
   };
 
+  // Sélectionner un lieu d'arrivée
   const handleSelectArrival = (item) => {
-    setArrival(item.display_name);
     setSelectedArrival(item);
+    setArrival(item.display_name);
     setArrivalSuggestions([]);
     setIsArrivalModalVisible(false);
   };
 
+  // Supprimer l'itinéraire sauvegardé
   const handleClearRoute = () => {
-    Alert.alert(
-      'Supprimer l’itinéraire',
-      'Voulez-vous vraiment supprimer cet itinéraire ?',
-      [
-        { text: 'Non', style: 'cancel' },
-        {
-          text: 'Oui',
-          onPress: () => updateSavedRoute(null),
-        },
-      ],
-      { cancelable: true }
-    );
+    updateSavedRoute(null);
   };
 
+  // Rendu des suggestions de lieux
+  const renderSuggestion = ({ item }) => (
+    <TouchableOpacity
+      style={styles.suggestionItem}
+      onPress={() =>
+        isDepartureModalVisible
+          ? handleSelectDeparture(item)
+          : handleSelectArrival(item)
+      }
+    >
+      <Icon name="place" size={20} color="#60a5fa" style={styles.suggestionIcon} />
+      <Text style={styles.suggestionText}>{item.display_name}</Text>
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
-      <View style={styles.container}>
-        {savedRoute ? (
-          <SavedRouteView savedRoute={savedRoute} onClear={handleClearRoute} />
-        ) : (
-          <>
-            <View style={styles.formContainer}>
-              <Text style={styles.modalTitle}>Les positions</Text>
-
-              <Text style={styles.inputLabel}>Départ</Text>
-              <TouchableOpacity
-                style={styles.inputContainer}
-                onPress={() => setIsDepartureModalVisible(true)}
-              >
-                <Icon name="location-on" size={24} color="#1E88E5" style={styles.inputIcon} />
-                <Text style={styles.inputText}>
-                  {selectedDeparture ? selectedDeparture.display_name : 'Chargement...'}
-                </Text>
-              </TouchableOpacity>
-              {departureLoading && <ActivityIndicator size="small" color="#1E88E5" />}
-
-              <Text style={styles.inputLabel}>Arrivée</Text>
-              <TouchableOpacity
-                style={styles.inputContainer}
-                onPress={() => setIsArrivalModalVisible(true)}
-              >
-                <Icon name="flag" size={24} color="#1E88E5" style={styles.inputIcon} />
-                <Text style={styles.inputText}>
-                  {selectedArrival ? selectedArrival.display_name : 'Lieu d’arrivée'}
-                </Text>
-              </TouchableOpacity>
-              {arrivalLoading && <ActivityIndicator size="small" color="#1E88E5" />}
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.confirmButton} onPress={handleSaveRoute}>
-                  <Icon name="check" size={20} color="#fff" style={styles.buttonIcon} />
-                  <Text style={styles.can}>Confirmer</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelCreate}>
-                  <Icon name="close" size={20} color="#60a5fa" style={styles.buttonIcon} />
-                  <Text style={styles.buttonCancelText}>Annuler</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <Modal
-              visible={isDepartureModalVisible}
-              animationType="slide"
-              transparent={true}
-              onRequestClose={() => setIsDepartureModalVisible(false)}
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
+      {savedRoute ? (
+        <SavedRouteView savedRoute={savedRoute} onClear={handleClearRoute} />
+      ) : (
+        <>
+          <Text style={styles.title}>Créer un itinéraire</Text>
+          <View style={styles.inputContainer}>
+            <TouchableOpacity
+              style={styles.inputWrapper}
+              onPress={() => setIsDepartureModalVisible(true)}
             >
-              <View style={styles.modalOverlay}>
-                <View style={styles.suggestionsModalContent}>
-                  <Text style={styles.modalTitle}>Suggestions de départ</Text>
-                  <View style={styles.modalInputContainer}>
-                    <Icon name="search" size={24} color="#1E88E5" style={styles.inputIcon} />
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="Rechercher un lieu de départ"
-                      value={departure}
-                      onChangeText={setDeparture}
-                    />
-                  </View>
-                  {departureLoading && <ActivityIndicator size="small" color="#1E88E5" />}
-                  <View style={styles.suggestionsContainer}>
-                    <FlatList
-                      data={departureSuggestions}
-                      keyExtractor={(item) => item.place_id.toString()}
-                      renderItem={({ item }) => (
-                        <TouchableOpacity
-                          style={styles.suggestionItemTouchable}
-                          onPress={() => handleSelectDeparture(item)}
-                        >
-                          <Icon name="location-pin" size={20} color="#1E88E5" style={styles.suggestionIcon} />
-                          <Text style={styles.suggestionItem}>{item.display_name}</Text>
-                        </TouchableOpacity>
-                      )}
-                    />
-                  </View>
-                  <TouchableOpacity
-                    style={styles.modalCancelButton}
-                    onPress={() => setIsDepartureModalVisible(false)}
-                  >
-                    <Icon name="close" size={20} color="#60a5fa" style={styles.buttonIcon} />
-                    <Text style={styles.buttonClosetext}>Fermer</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </Modal>
-            <Modal
-              visible={isArrivalModalVisible}
-              animationType="slide"
-              transparent={true}
-              onRequestClose={() => setIsArrivalModalVisible(false)}
+              <Icon name="my-location" size={24} color="#60a5fa" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Lieu de départ"
+                value={departure}
+                onChangeText={setDeparture}
+                editable={false}
+                pointerEvents="none"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.inputWrapper}
+              onPress={() => setIsArrivalModalVisible(true)}
             >
-              <View style={styles.modalOverlay}>
-                <View style={styles.suggestionsModalContent}>
-                  <Text style={styles.modalTitle}>Suggestions d’arrivée</Text>
-                  <View style={styles.modalInputContainer}>
-                    <Icon name="search" size={24} color="#1E88E5" style={styles.inputIcon} />
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="Rechercher un lieu d’arrivée"
-                      value={arrival}
-                      onChangeText={setArrival}
-                    />
-                  </View>
-                  {arrivalLoading && <ActivityIndicator size="small" color="#1E88E5" />}
-                  <View style={styles.suggestionsContainer}>
-                    <FlatList
-                      data={arrivalSuggestions}
-                      keyExtractor={(item) => item.place_id.toString()}
-                      renderItem={({ item }) => (
-                        <TouchableOpacity
-                          style={styles.suggestionItemTouchable}
-                          onPress={() => handleSelectArrival(item)}
-                        >
-                          <Icon name="location-pin" size={20} color="#1E88E5" style={styles.suggestionIcon} />
-                          <Text style={styles.suggestionItem}>{item.display_name}</Text>
-                        </TouchableOpacity>
-                      )}
-                    />
-                  </View>
-                  <TouchableOpacity
-                    style={styles.modalCancelButton}
-                    onPress={() => setIsArrivalModalVisible(false)}
-                  >
-                    <Icon name="close" size={20} color="#60a5fa" style={styles.buttonIcon} />
-                    <Text style={styles.buttonClosetext}>Fermer</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </Modal>
-          </>
-        )}
-      </View>
+              <Icon name="location-on" size={24} color="#F44336" style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Lieu d’arrivée"
+                value={arrival}
+                onChangeText={setArrival}
+                editable={false}
+                pointerEvents="none"
+              />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity style={styles.saveButton} onPress={handleSaveRoute}>
+              <Icon name="save" size={20} color="#fff" style={styles.buttonIcon} />
+              <Text style={styles.buttonText}>Enregistrer</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelButton} onPress={handleCancelCreate}>
+              <Icon name="close" size={20} color="#60a5fa" style={styles.buttonIcon} />
+              <Text style={styles.cancelButtonText}>Annuler</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+
+      {/* Modal pour le départ */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isDepartureModalVisible}
+        onRequestClose={() => setIsDepartureModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity
+              style={styles.closeIcon}
+              onPress={() => setIsDepartureModalVisible(false)}
+            >
+              <Icon name="close" size={24} color="#333" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Sélectionner le lieu de départ</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Rechercher un lieu"
+              value={departure}
+              onChangeText={setDeparture}
+              autoFocus
+            />
+            {departureLoading ? (
+              <ActivityIndicator size="large" color="#60a5fa" style={styles.loader} />
+            ) : (
+              <FlatList
+                data={departureSuggestions}
+                renderItem={renderSuggestion}
+                keyExtractor={(item) => item.place_id.toString()}
+                style={styles.suggestionList}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal pour l'arrivée */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isArrivalModalVisible}
+        onRequestClose={() => setIsArrivalModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity
+              style={styles.closeIcon}
+              onPress={() => setIsArrivalModalVisible(false)}
+            >
+              <Icon name="close" size={24} color="#333" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Sélectionner le lieu d’arrivée</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Rechercher un lieu"
+              value={arrival}
+              onChangeText={setArrival}
+              autoFocus
+            />
+            {arrivalLoading ? (
+              <ActivityIndicator size="large" color="#60a5fa" style={styles.loader} />
+            ) : (
+              <FlatList
+                data={arrivalSuggestions}
+                renderItem={renderSuggestion}
+                keyExtractor={(item) => item.place_id.toString()}
+                style={styles.suggestionList}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: '#f5f7fa',
   },
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-  },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 20,
-    color: '#1E88E5',
-    textAlign: 'center',
-  },
-  formContainer: {
-    backgroundColor: '#fff',
-    padding: 20,
-    marginBottom: 24,
-    width: '100%',
-    minHeight: '90%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalTitle: {
     fontSize: 24,
-    fontWeight: '600',
-    marginBottom: 25,
+    fontWeight: '700',
+    marginTop: 20,
+    marginBottom: 20,
+    color: '#333',
     textAlign: 'center',
-    color: '#1E88E5',
-  },
-  inputLabel: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1E88E5',
-    alignSelf: 'flex-start',
-    marginBottom: 10,
-    marginTop: 10,
   },
   inputContainer: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 56,
-    borderColor: '#dbeafe',
-    borderWidth: 1.5,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    marginBottom: 18,
-    backgroundColor: '#f8fafc',
-    elevation: 2,
-    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   inputIcon: {
-    marginRight: 10,
+    marginLeft: 12,
   },
-  inputText: {
+  input: {
     flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     fontSize: 16,
     color: '#333',
   },
-  modalActions: {
+  buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    rowGap: 30,
-    columnGap: 10,
-    marginTop: 150,
+    gap: 20,
+    marginTop: 20,
   },
-  confirmButton: {
+  saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#60a5fa',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-    flex: 1,
-    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   cancelButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#60a5fa',
-    flex: 1,
-    justifyContent: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   buttonText: {
     fontSize: 16,
@@ -505,81 +487,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginLeft: 8,
   },
-  buttonCancelText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#60a5fa',
-    marginLeft: 8,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  suggestionsModalContent: {
-    backgroundColor: '#ffffff',
-    padding: 24,
-    borderRadius: 16,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 10,
-    width: '90%',
-    maxHeight: '80%',
-    alignItems: 'center',
-  },
-  modalInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 52,
-    borderColor: '#dbeafe',
-    borderWidth: 1.5,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    backgroundColor: '#f8fafc',
-    width: '100%',
-  },
-  modalInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-  },
-  suggestionItemTouchable: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    width: '100%',
-  },
-  suggestionIcon: {
-    marginRight: 10,
-  },
-  suggestionItem: {
-    fontSize: 16,
-    color: '#333',
-  },
-  suggestionsContainer: {
-    flexGrow: 1,
-    maxHeight: 300,
-    width: '100%',
-    marginBottom: 12,
-  },
-  modalCancelButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#60a5fa',
-    marginTop: 16,
-  },
-  buttonClosetext: {
+  cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#60a5fa',
@@ -587,6 +495,65 @@ const styles = StyleSheet.create({
   },
   buttonIcon: {
     marginRight: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    width: '90%',
+    maxHeight: '80%',
+    borderRadius: 12,
+    padding: 20,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+  },
+  closeIcon: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 1,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  modalInput: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 10,
+  },
+  suggestionList: {
+    maxHeight: 300,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  suggestionIcon: {
+    marginRight: 10,
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+  },
+  loader: {
+    marginVertical: 20,
   },
 });
 

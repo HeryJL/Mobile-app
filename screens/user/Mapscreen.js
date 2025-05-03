@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Alert, Modal, FlatList, ActivityIndicator, Platform } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
@@ -73,6 +74,7 @@ const MapScreen = () => {
   const [routeData, setRouteData] = useState(initialRouteData);
   const [originalRouteData] = useState(initialRouteData);
   const [distance, setDistance] = useState(initialRouteData.distance || null);
+  const [duration, setDuration] = useState(initialRouteData.duration || null); // Ajout de l'état pour la durée
   const [routeCoordinates, setRouteCoordinates] = useState(initialRouteData.routeCoordinates || []);
   const [editingMode, setEditingMode] = useState(null);
   const [selectedMarkerInfo, setSelectedMarkerInfo] = useState(null);
@@ -172,7 +174,12 @@ const MapScreen = () => {
               latitude: lat,
               longitude: lon,
             }));
+            const routeDistance = (data.routes[0].distance / 1000).toFixed(2); // Distance en km
+            const routeDuration = Math.round(data.routes[0].duration / 60); // Durée en minutes
             setRouteCoordinates(coords);
+            setDistance(routeDistance);
+            setDuration(routeDuration);
+            setRouteData(prev => ({ ...prev, distance: routeDistance, duration: routeDuration }));
 
             if (mapRef.current) {
               const allCoords = [routeData.departureCoordinates, routeData.arrivalCoordinates, ...coords];
@@ -194,6 +201,8 @@ const MapScreen = () => {
           } else {
             Alert.alert('Erreur', 'Aucun itinéraire trouvé pour les points sélectionnés.');
             setRouteCoordinates([routeData.departureCoordinates, routeData.arrivalCoordinates].filter(Boolean));
+            setDistance(calculateDistance(routeData.departureCoordinates, routeData.arrivalCoordinates));
+            setDuration(null);
 
             if (mapRef.current) {
               const fallbackCoords = [routeData.departureCoordinates, routeData.arrivalCoordinates].filter(Boolean);
@@ -217,6 +226,8 @@ const MapScreen = () => {
           console.error("Fetch route error:", error);
           Alert.alert('Erreur', `Impossible de récupérer le trajet: ${error.message}`);
           setRouteCoordinates([routeData.departureCoordinates, routeData.arrivalCoordinates].filter(Boolean));
+          setDistance(calculateDistance(routeData.departureCoordinates, routeData.arrivalCoordinates));
+          setDuration(null);
 
           if (mapRef.current) {
             const fallbackCoords = [routeData.departureCoordinates, routeData.arrivalCoordinates].filter(Boolean);
@@ -242,6 +253,7 @@ const MapScreen = () => {
       const singlePoint = routeData.departureCoordinates || routeData.arrivalCoordinates;
       setRouteCoordinates([singlePoint]);
       setDistance(null);
+      setDuration(null);
 
       if (mapRef.current && singlePoint) {
         mapRef.current.animateToRegion({
@@ -254,6 +266,7 @@ const MapScreen = () => {
     } else {
       setRouteCoordinates([]);
       setDistance(null);
+      setDuration(null);
     }
 
     return () => {};
@@ -317,16 +330,19 @@ const MapScreen = () => {
       const displayName = data.display_name || 'Lieu inconnu';
 
       let newDistance = routeData.distance;
+      let newDuration = routeData.duration;
       if (editingPointType === 'departure' && routeData.arrivalCoordinates) {
         newDistance = calculateDistance(
           { latitude, longitude },
           routeData.arrivalCoordinates
         );
+        newDuration = null; // Réinitialiser la durée car elle doit être recalculée
       } else if (editingPointType === 'arrival' && routeData.departureCoordinates) {
         newDistance = calculateDistance(
           routeData.departureCoordinates,
           { latitude, longitude }
         );
+        newDuration = null; // Réinitialiser la durée car elle doit être recalculée
       }
 
       const updatedRoute = {
@@ -335,10 +351,12 @@ const MapScreen = () => {
           ? { departure: displayName, departureCoordinates: { latitude, longitude } }
           : { arrival: displayName, arrivalCoordinates: { latitude, longitude } }),
         distance: newDistance,
+        duration: newDuration,
       };
 
       setRouteData(updatedRoute);
       setDistance(newDistance);
+      setDuration(newDuration);
       Alert.alert('Point modifié', `Le point de ${editingPointType === 'departure' ? 'départ' : 'destination'} a été défini sur : ${displayName}`);
     } catch (error) {
       console.error("Reverse geocoding error:", error);
@@ -357,6 +375,7 @@ const MapScreen = () => {
       const updatedRoute = {
         ...routeData,
         distance,
+        duration,
         routeCoordinates,
       };
       updateSavedRoute(updatedRoute);
@@ -401,6 +420,7 @@ const MapScreen = () => {
         taxiId: taxi._id,
         routeData,
         distance,
+        duration,
         routeCoordinates,
       };
 
@@ -414,6 +434,7 @@ const MapScreen = () => {
       const updatedRoute = {
         ...routeData,
         distance,
+        duration,
         routeCoordinates,
         reservation: {
           taxiId: taxi._id,
@@ -421,7 +442,7 @@ const MapScreen = () => {
           licensePlate: taxi.licensePlate,
           model: taxi.model,
           color: taxi.color,
-          status: 'pending', // Ajout du statut initial
+          status: 'pending',
         },
       };
 
@@ -640,7 +661,10 @@ const MapScreen = () => {
       {distance && !editingMode && !selectedMarkerInfo && (
         <View style={styles.distanceTopLeft}>
           <Icon name="straighten" size={20} color="#1e90ff" style={styles.distanceIcon} />
-          <Text style={styles.distanceText}>Distance: {distance} km</Text>
+          <View>
+            <Text style={styles.distanceText}>Distance: {distance} km</Text>
+            {duration && <Text style={styles.distanceText}>Durée: {duration} min</Text>}
+          </View>
         </View>
       )}
 
@@ -885,7 +909,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 20,
     borderRadius: 12,
-    width: '80%',
+    width: ' k',
     alignItems: 'center',
     elevation: 10,
     shadowColor: '#000',
