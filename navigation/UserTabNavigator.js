@@ -6,12 +6,12 @@ import { Ionicons } from '@expo/vector-icons';
 import UserHomeScreen from '../screens/user/UserHomeScreen';
 import UserRouteScreen from '../screens/user/UserRouteScreen';
 import UserProfileScreen from '../screens/user/UserProfilScreen';
-import MapScreen from '../screens/user/Mapscreen';
+import RideHistoryScreen from '../screens/user/RideHistoryScreen'; // New screen
+import MapScreen from '../screens/user/Mapscreen'; // New screen
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// Onglets visibles
 const TabNavigator = () => (
   <Tab.Navigator
     screenOptions={({ route }) => ({
@@ -22,6 +22,8 @@ const TabNavigator = () => (
           iconName = focused ? 'home' : 'home-outline';
         } else if (route.name === 'Itinéraire') {
           iconName = focused ? 'map' : 'map-outline';
+        } else if (route.name === 'Historique') {
+          iconName = focused ? 'time' : 'time-outline';
         } else if (route.name === 'Profil') {
           iconName = focused ? 'person' : 'person-outline';
         }
@@ -47,11 +49,11 @@ const TabNavigator = () => (
   >
     <Tab.Screen name="Accueil" component={UserHomeScreen} />
     <Tab.Screen name="Itinéraire" component={UserRouteScreen} />
+    <Tab.Screen name="Historique" component={RideHistoryScreen} />
     <Tab.Screen name="Profil" component={UserProfileScreen} />
   </Tab.Navigator>
 );
 
-// Stack principal (englobe les tabs + écrans externes)
 const UserTabNavigator = () => (
   <Stack.Navigator>
     <Stack.Screen

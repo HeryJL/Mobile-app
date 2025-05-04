@@ -25,8 +25,6 @@ const AuthNavigator = () => {
 };
 
 
-
-
 // Gestion générale de la navigation
 const AppNavigator = () => {
   const { user, userType } = useContext(AuthContext);
