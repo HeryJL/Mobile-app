@@ -4,16 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons'; // Example icon usage
 
 // Placeholder component to display ongoing trip details
 const OngoingTripCard = ({ tripDetails, onEndTrip }) => {
-  // Use dummy data if tripDetails is not provided
-  const dummyTrip = {
-    passengerName: "John Doe",
-    pickupAddress: "123 Main St, Anytown",
-    dropoffAddress: "456 Oak Ave, Anytown",
-    estimatedTime: "15 min",
-    distance: "5 km",
-  };
-
-  const trip = tripDetails || dummyTrip;
+  const trip = tripDetails;
 
   return (
     <View style={styles.cardContainer}>

@@ -14,7 +14,10 @@ export const getUserRides = async (id) => {
   const response = await api.get(`/rides/${id}`);
   return response.data
 };
-
+export const getRideLoad = async(id) => {
+  const response = await api.get(`/ridesLoad/${id}`);
+  return response.data
+}
 export const updateRide = async (id, ride) => {
   const response = await api.put(`/rides/${id}`, ride);
   return response.data;

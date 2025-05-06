@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, Alert } from 'react-native'; // Added Alert
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,6 +7,8 @@ import MapView, { Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import axios from 'axios'; // Assuming axios is used for getRoute
+import { AuthContext } from '../../context/AuthContext';
+import { getRideLoad, getUserRides, updateRide } from '../../services/ride.service';
 
 
 const RideRequestsScreen = () => {
@@ -15,23 +17,10 @@ const RideRequestsScreen = () => {
   const insets = useSafeAreaInsets();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  // Example static points - ideally, these would come from the ride request data
-  const pickupPoint = { latitude: -19.8625, longitude: 47.0302 }; // point de départ du client
-  const dropoffPoint = { latitude: -19.8712, longitude: 47.0377 };
   const [driverLocation, setDriverLocation] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState([]); // To store polyline coordinates
-
-  // Static ride requests for demonstration
-  const rideRequests = [
-    { id: '1', distance: 2, pickup: 'Aéroport', destination: 'Centre-ville', startLocation: pickupPoint, endLocation: dropoffPoint },
-    { id: '2', distance: 2, pickup: 'Gare', destination: 'Mahamasina', startLocation: dropoffPoint, endLocation: pickupPoint },
-    { id: '3', distance: 2, pickup: 'Ambohijatovo', destination: 'Anosy', startLocation: pickupPoint, endLocation: dropoffPoint },
-    { id: '4', distance: 2, pickup: 'Tana Water Front', destination: 'Ivato', startLocation: pickupPoint, endLocation: dropoffPoint },
-    { id: '5', distance: 2, pickup: 'Ambohimanambola', destination: 'Andraharo', startLocation: pickupPoint, endLocation: dropoffPoint },
-    { id: '6', distance: 2, pickup: 'Antsenakely', destination: 'Andraharo', startLocation: pickupPoint, endLocation: dropoffPoint },
-    { id: '7', distance: 2, pickup: 'Antsenakely', destination: 'Andraharo', startLocation: pickupPoint, endLocation: dropoffPoint },
-  ];
-
+  const [rideRequests, setRideRequests] = useState(null)
+  const { userToken,updateStatut } = useContext(AuthContext);
 
   const getDriverLocation = async () => {
     try {
@@ -46,6 +35,15 @@ const RideRequestsScreen = () => {
         longitude: location.coords.longitude,
       };
       setDriverLocation(current);
+      const data = await getUserRides(userToken)
+      setRideRequests(data.map(data => ({
+        id: data._id,
+        distance: data.distanceKm,
+        pickup: data.startLocation.destination,
+        destination: data.endLocation.destination,
+        startLocation: { latitude: data.startLocation.coordinates[1], longitude: data.startLocation.coordinates[0] },
+        endLocation: { latitude: data.endLocation.coordinates[1], longitude: data.endLocation.coordinates[0] } 
+      })))
       return current;
     } catch (error) {
       Alert.alert('Erreur GPS', error.message);
@@ -104,18 +102,22 @@ const RideRequestsScreen = () => {
     setIsModalVisible(true);
   };
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
     // Implement logic to accept the ride request
     console.log("Accepted ride request:", selectedRequest);
+    await updateRide(selectedRequest.id,{status:"en cours"})
+    updateStatut("occupé")
     setIsModalVisible(false);
     setSelectedRequest(null);
-    setRouteCoordinates([]); // Clear route on modal close
+    setRouteCoordinates([]); 
+    // Clear route on modal close
     // Navigate to a tracking screen or similar
   };
 
-  const handleReject = () => {
+  const handleReject = async() => {
     // Implement logic to reject the ride request
     console.log("Rejected ride request:", selectedRequest);
+    await updateRide(selectedRequest.id,{status:"annulé"})
     setIsModalVisible(false);
     setSelectedRequest(null);
     setRouteCoordinates([]); // Clear route on modal close

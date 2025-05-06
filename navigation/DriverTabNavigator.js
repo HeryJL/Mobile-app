@@ -1,17 +1,17 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons'; // Ou 'react-native-vector-icons/Ionicons' si sans Expo
 import DriverHomeScreen from '../screens/driver/DriverHomeScreen';
 import RideRequestsScreen from '../screens/driver/RideRequestsScreen';
 import DriverProfileScreen from '../screens/driver/DriverProfileScreen';
 import { createStackNavigator } from '@react-navigation/stack';
+import SendLocation from '../components/SendLocation';
 
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
 const TabNavigator = () => (
-  
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
@@ -49,15 +49,15 @@ const TabNavigator = () => (
       <Tab.Screen name="Profil" component={DriverProfileScreen} />
     </Tab.Navigator>
 );
-
-const DriverTabNavigator = () => (
-  <Stack.Navigator>
-    <Stack.Screen
-      name="MainTabs"
-      component={TabNavigator}
-      options={{ headerShown: false }}
-    />
-  </Stack.Navigator>
-);
+const DriverTabNavigator = ({Idtaxi}) => (<>
+  <SendLocation Idtaxi={Idtaxi} />
+    <Stack.Navigator>
+      <Stack.Screen
+        name="MainTabs"
+        component={TabNavigator}
+        options={{ headerShown: false }}
+      />
+    </Stack.Navigator>
+    </>);
 
 export default DriverTabNavigator;

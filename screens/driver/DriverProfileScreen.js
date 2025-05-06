@@ -18,7 +18,7 @@ const DriverProfileScreen = () => {
     }).start();
   }, [fadeAnim]);
 
-  const handleLogout = () => {
+  const handleLogout = async() => {
     logout();
   };
 
@@ -40,7 +40,7 @@ const DriverProfileScreen = () => {
               />
               <View style={styles.avatarBorder} />
             </View>
-            <Text style={styles.title}>{user?.firstName || 'Profil'} {user?.lastName}</Text>
+            <Text style={styles.title}>{user?.name || 'Profil'}</Text>
             
           </View>
 
@@ -64,22 +64,22 @@ const DriverProfileScreen = () => {
                 </View>
               )}
 
-              {user.carModel && (
+              {user.taxi?.model && (
                 <View style={styles.infoItem}>
                   <Ionicons name="car-sport" size={22} color="#60a5fa" style={styles.infoIcon} />
                   <View>
                     <Text style={styles.infoLabel}>Véhicule</Text>
-                    <Text style={styles.infoValue}>{user.carModel}</Text>
+                    <Text style={styles.infoValue}>{user.taxi.model}</Text>
                   </View>
                 </View>
               )}
 
-              {user.carPlate && (
+              {user.taxi?.licensePlate && (
                 <View style={styles.infoItem}>
                   <MaterialIcons name="confirmation-number" size={22} color="#60a5fa" style={styles.infoIcon} />
                   <View>
                     <Text style={styles.infoLabel}>Plaque d'immatriculation</Text>
-                    <Text style={styles.infoValue}>{user.carPlate}</Text>
+                    <Text style={styles.infoValue}>{user.taxi.licensePlate}</Text>
                   </View>
                 </View>
               )}

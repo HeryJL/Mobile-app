@@ -8,37 +8,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AvailabilityToggle from './AvailabilityToggle';
 import OngoingTripCard from './OngoingTripCard';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { updateTaxi } from '../../services/taxi.service';
+import { getRideLoad, updateRide } from '../../services/ride.service';
 
 
 
 const DriverHomeScreen = () => {
   const route = useRoute();
-  const { user } = useContext(AuthContext);
+  const { user,updateStatut,statut,Idtaxi } = useContext(AuthContext);
   const [driverLocation, setDriverLocation] = useState(null);
   const [routeToPickup, setRouteToPickup] = useState([]);
   const [routeToDestination, setRouteToDestination] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isAvailable, setIsAvailable] = useState(false); // Added availability state
+  const [isAvailable, setIsAvailable] = useState(statut == 'disponible'); // Added availability state
   const [loadingAvailability, setLoadingAvailability] = useState(false); // Loading state for availability toggle
   const [hasOngoingTrip, setHasOngoingTrip] = useState(false); // State to simulate having a trip
-  const [ongoingTripDetails, setOngoingTripDetails] = useState(null); // State to hold trip data
-
-  // Coordonnées fictives (à remplacer si nécessaire)
-  const pickupPoint = { latitude: -19.8625, longitude: 47.0302 }; // point de départ du client
-  const dropoffPoint = { latitude: -19.8712, longitude: 47.0377 }; // point d'arrivée du client
-  // Dummy trip data
-  const dummyTrip = {
-    passengerName: "Rakoto",
-    pickupAddress: "Rue de la Liberté 10, Antananarivo",
-    dropoffAddress: "Avenue de l'Indépendance 25, Antananarivo",
-    estimatedTime: "20 min",
-    distance: "7 km",
-    pickupCoords: pickupPoint,
-    dropoffCoords: dropoffPoint,
-  };
-
-
-  // --- Location and Route Logic (mostly unchanged) ---
+  const [ongoingTripDetails, setOngoingTripDetails] = useState(null); 
   const getDriverLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -83,31 +68,38 @@ const DriverHomeScreen = () => {
   useEffect(() => {
     // Async IIFE to load initial data
     (async () => {
-      // In a real app, check backend if driver has an ongoing trip first
-      // For simulation, let's randomly decide if there's a trip or just show availability
-       const initiallyHasTrip = Math.random() > 0.5; // 50% chance to start with a trip
-
-       if (initiallyHasTrip) {
+        if (statut === 'occupé') {
+          const data = await getRideLoad(Idtaxi)
+          const dummyTrip = {
+            id: data._id,
+            passengerName: data.clientId.name,
+            pickupAddress: data.startLocation.destination,
+            dropoffAddress: data.endLocation.destination,
+            estimatedTime: "20 min",
+            distance: data.distanceKm,
+            pickupCoords:{ latitude: data.startLocation.coordinates[1], longitude: data.startLocation.coordinates[0]}, 
+            dropoffCoords:{latitude:data.endLocation.coordinates[1],longitude:data.endLocation.coordinates[0]},
+            price:data.price,
+            heure:data.heure
+          };
           setHasOngoingTrip(true);
-          setOngoingTripDetails(dummyTrip); // Load dummy trip data
-       } else {
-          setIsAvailable(false); // Driver starts unavailable if no trip
-       }
+          setOngoingTripDetails(dummyTrip);
+        } else {
+            setIsAvailable(false); // Driver starts unavailable if no trip
+        }
+        const current = await getDriverLocation();
 
-       // Always get driver location on load
-      const current = await getDriverLocation();
-
-      // Fetch routes only if there's a trip and location is available
-      if (initiallyHasTrip && current) {
-        const pathToPickup = await getRoute(current, dummyTrip.pickupCoords);
-        const pathToDropoff = await getRoute(dummyTrip.pickupCoords, dummyTrip.dropoffCoords);
-        setRouteToPickup(pathToPickup);
-        setRouteToDestination(pathToDropoff);
-      }
+      // Fetch routes only if there's a trip and location is availabl
+      if (statut === 'occupé' && current) {
+          const pathToPickup = await getRoute(current, ongoingTripDetails.pickupCoords);
+          const pathToDropoff = await getRoute(ongoingTripDetails.pickupCoords, ongoingTripDetails.dropoffCoords);
+          setRouteToPickup(pathToPickup);
+          setRouteToDestination(pathToDropoff);
+        }
 
       setLoading(false); // Hide main loading indicator
     })();
-  }, []); // Empty dependency array means this runs once on mount
+  }, [statut]); // Empty dependency array means this runs once on mount
 
 
   // --- Handlers for the new components ---
@@ -115,11 +107,12 @@ const DriverHomeScreen = () => {
     setLoadingAvailability(true);
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 800));
-    const newStatus = !isAvailable;
-    setIsAvailable(newStatus);
-    setLoadingAvailability(false);
+    const newStatus = statut === "disponible";
+    const st = newStatus ? "occupé":"disponible"
     console.log('Statut du conducteur:', newStatus ? 'Disponible' : 'Indisponible');
-    // In a real app: send this status to your backend API
+    updateStatut(st)
+    setIsAvailable(statut === 'disponible');
+    setLoadingAvailability(false);
   };
 
   const handleEndTrip = () => {
@@ -131,8 +124,9 @@ const DriverHomeScreen = () => {
                   text: "Annuler",
                   style: "cancel"
               },
-              { text: "Oui", onPress: () => {
-                  console.log("Course terminée");
+              { text: "Oui", onPress: async() => {
+                  await updateRide(ongoingTripDetails.id,{status:"terminé"})
+                  await updateStatut("disponible")
                   setHasOngoingTrip(false);
                   setOngoingTripDetails(null);
                   setRouteToPickup([]); // Clear routes
@@ -149,9 +143,9 @@ const DriverHomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Bienvenue {user?.firstName || 'Conducteur'}</Text>
+        <Text style={styles.title}>Bienvenue {user?.name || 'Conducteur'}</Text>
 
-         {/* Show main loading indicator if fetching initial data or simulating trip */}
+         {/* Show main loading indicator if ftching initial data or simulating trip */}
         {loading && !driverLocation ? (
           <ActivityIndicator size="large" color="#007BFF" />
         ) : (
@@ -167,14 +161,12 @@ const DriverHomeScreen = () => {
                   latitudeDelta: 0.03, // Adjusted delta for slightly wider view
                   longitudeDelta: 0.03, // Adjusted delta
                 }}
-                 // Optional: Use ref to control map view for zooming to fit routes
-                 // ref={(map) => { this.mapRef = map }}
                 showsUserLocation
-                 followsUserLocation // Map follows user location
+                followsUserLocation // Map follows user location
               >
                 
                 {/* Only show trip markers and polylines if there's an ongoing trip */}
-                {hasOngoingTrip && ongoingTripDetails && (
+                {ongoingTripDetails && (
                     <>
                      <Marker
                        coordinate={ongoingTripDetails.pickupCoords}
@@ -212,9 +204,6 @@ const DriverHomeScreen = () => {
             />
         )}
 
-        
-
-
         <TouchableOpacity
           style={styles.refreshButton}
           onPress={async () => {
@@ -236,12 +225,6 @@ const DriverHomeScreen = () => {
           ) : null}
           <Text style={styles.refreshText}>↻ Rafraîchir Position</Text>
         </TouchableOpacity>
-
-         {/* Optional: Add a logout button (assuming logout is available in AuthContext) */}
-          {/* <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-              <Text style={styles.logoutButtonText}>Déconnexion</Text>
-          </TouchableOpacity> */}
-
       </ScrollView>
     </SafeAreaView>
   );

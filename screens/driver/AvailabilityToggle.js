@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
+import { AuthContext } from '../../context/AuthContext';
 // import { LinearGradient } from 'expo-linear-gradient'; // Optional: uncomment if you want to use LinearGradient here
-
+// 
 const AvailabilityToggle = ({ isAvailable, onToggle, loading }) => {
+  const {  statut } = useContext(AuthContext)
   return (
     <View style={styles.container}>
       <Text style={styles.statusLabel}>
         Statut actuel :{' '}
-        <Text style={isAvailable ? styles.statusAvailable : styles.statusUnavailable}>
-          {isAvailable ? 'Disponible' : 'Indisponible'}
+        <Text style={statut === "disponible" ? styles.statusAvailable : styles.statusUnavailable}>
+          {statut}
         </Text>
       </Text>
       <TouchableOpacity
@@ -24,7 +26,7 @@ const AvailabilityToggle = ({ isAvailable, onToggle, loading }) => {
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.availabilityText}>
-            {isAvailable ? 'Passer en Indisponible' : 'Passer en Disponible'}
+            {statut === "disponible" ? 'Passer en Indisponible' : 'Passer en Disponible'}
           </Text>
         )}
       </TouchableOpacity>

@@ -1,15 +1,22 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Animated } from 'react-native';
 import { AuthContext } from '../../context/AuthContext';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, FontAwesome, Ionicons, Feather, AntDesign } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getUserRides } from './../../services/ride.service';
 
 const UserProfileScreen = () => {
-  const { user, logout } = useContext(AuthContext);
+  const [showAll, setShowAll] = useState(false);
+  const { user,userToken, logout } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
-
+  const [historique,setHistorique] = useState(null)
+  useEffect(() => {
+    (async() => {
+      const data = await getUserRides(userToken)
+      setHistorique(data)})()
+  })
   React.useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -17,7 +24,6 @@ const UserProfileScreen = () => {
       useNativeDriver: true,
     }).start();
   }, [fadeAnim]);
-
   const handleLogout = () => {
     logout();
   };
@@ -43,8 +49,8 @@ const UserProfileScreen = () => {
                 <Feather name="edit-2" size={18} color="#fff" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.title}>{user?.firstName || 'Utilisateur'} {user?.lastName}</Text>
-            <Text style={styles.subtitle}>Membre depuis 2023</Text>
+            <Text style={styles.title}>{user?.name || 'Utilisateur'}</Text>
+            <Text style={styles.subtitle}>Membre depuis 2023 {user._id}</Text>
           </View>
 
           {/* Carte de fidélité */}
@@ -99,34 +105,31 @@ const UserProfileScreen = () => {
           <View style={styles.profileCard}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Vos dernières courses</Text>
-              <TouchableOpacity>
-                <Text style={styles.seeAll}>Tout voir</Text>
+              <TouchableOpacity onPress={() => setShowAll(!showAll)}>
+                <Text style={styles.seeAll}>{showAll ? "Réduire" : "Tout voir"}</Text>
               </TouchableOpacity>
             </View>
             
-            <View style={styles.rideItem}>
-              <View style={styles.rideIcon}>
-                <Ionicons name="car-sport" size={20} color="#60a5fa" />
-              </View>
-              <View style={styles.rideDetails}>
-                <Text style={styles.rideRoute}>Gare de Lyon → Tour Eiffel</Text>
-                <Text style={styles.rideDate}>12 juin 2023 - 14:30</Text>
-              </View>
-              <Text style={styles.ridePrice}>€15,20</Text>
-            </View>
+            {historique ? (
+                 (showAll ? historique : historique.slice(0, 2)).map((histo, index) => (
+                  <View key={index} style={styles.rideItem}>
+                    <View style={styles.rideIcon}>
+                      <Ionicons name="car-sport" size={20} color="#60a5fa" />
+                    </View>
+                    <View style={styles.rideDetails}>
+                      <Text style={styles.rideRoute}>
+                        {histo.startLocation.destination} → {histo.endLocation.destination}
+                      </Text>
+                      <Text style={styles.rideDate}>12 juin 2023 - 14:30</Text>
+                    </View>
+                    <Text style={styles.ridePrice}>{histo.price}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.sectionTitle}>tsy mbola nisy</Text>
+              )}
 
-            <View style={styles.rideItem}>
-              <View style={styles.rideIcon}>
-                <Ionicons name="car-sport" size={20} color="#60a5fa" />
-              </View>
-              <View style={styles.rideDetails}>
-                <Text style={styles.rideRoute}>Aéroport CDG → Montmartre</Text>
-                <Text style={styles.rideDate}>5 juin 2023 - 09:15</Text>
-              </View>
-              <Text style={styles.ridePrice}>€32,50</Text>
-            </View>
           </View>
-
           {/* Préférences */}
           <View style={styles.profileCard}>
             <Text style={styles.sectionTitle}>Préférences</Text>

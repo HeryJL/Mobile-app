@@ -29,7 +29,7 @@ const SignupScreen = ({ navigation }) => {
     const [secureEntry, setSecureEntry] = useState(true);
     const [confSecure,setConfSecure]= useState(true);
     const [shakeAnimation] = useState(new Animated.Value(0));
-    const { login, isLoading } = useContext(AuthContext);
+    const { registre, isLoading } = useContext(AuthContext);
     const insets = useSafeAreaInsets();
     const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
@@ -38,9 +38,8 @@ const SignupScreen = ({ navigation }) => {
             triggerShake();
             return;
         }
-
         try {
-            const userType = await login(email, password);
+            const userType = await registre(name, email, password,phone);
 
         } catch (error) {
             triggerShake();
