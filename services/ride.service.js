@@ -18,6 +18,14 @@ export const getRideLoad = async(id) => {
   const response = await api.get(`/ridesLoad/${id}`);
   return response.data
 }
+export const getRideAccepte = async(id) => {
+  const response = await api.get(`/rideAccept/${id}`);
+  return response.data
+}
+export const getRideAttente = async(id) => {
+  const response = await api.get(`/rideAttent/${id}`);
+  return response.data
+}
 export const updateRide = async (id, ride) => {
   const response = await api.put(`/rides/${id}`, ride);
   return response.data;

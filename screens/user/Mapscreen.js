@@ -382,20 +382,7 @@ const MapScreen = () => {
 
   const handleTaxiSelect = async (taxi) => {
     try {
-      const reservationData = {
-        clientId: 'mock-client-id',
-        taxiId: taxi._id,
-        routeData,
-        distance,
-        routeCoordinates,
-      };
-
       await new Promise(resolve => setTimeout(resolve, 500));
-
-      const mockReservation = {
-        _id: `reservation-${Date.now()}`,
-        ...reservationData,
-      };
       const dist = calculateDistance(routeData.departureCoordinates,routeData.arrivalCoordinates)
       const dataRide = {
         clientId: userToken,
@@ -643,6 +630,7 @@ const MapScreen = () => {
         <View style={styles.distanceTopLeft}>
           <Icon name="straighten" size={20} color="#1e90ff" style={styles.distanceIcon} />
           <Text style={styles.distanceText}>Distance: {distance} km</Text>
+          <Text>Prix: {distance * 5000} Ar</Text>
         </View>
       )}
 

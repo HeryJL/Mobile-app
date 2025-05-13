@@ -36,14 +36,16 @@ const RideRequestsScreen = () => {
       };
       setDriverLocation(current);
       const data = await getUserRides(userToken)
-      setRideRequests(data.map(data => ({
+      const dataU = data.map((data) => (
+      {
         id: data._id,
         distance: data.distanceKm,
         pickup: data.startLocation.destination,
         destination: data.endLocation.destination,
         startLocation: { latitude: data.startLocation.coordinates[1], longitude: data.startLocation.coordinates[0] },
         endLocation: { latitude: data.endLocation.coordinates[1], longitude: data.endLocation.coordinates[0] } 
-      })))
+      }))
+      setRideRequests(dataU)
       return current;
     } catch (error) {
       Alert.alert('Erreur GPS', error.message);
@@ -132,6 +134,7 @@ const RideRequestsScreen = () => {
       <SafeAreaView style={styles.safeArea}>
         <View style={{ paddingTop: insets.top }}>
           <Text style={styles.title}>Demandes de Trajets</Text>
+          {rideRequests && rideRequests.length != 0 ? (
           <FlatList
             data={rideRequests}
             keyExtractor={(item) => item.id}
@@ -144,7 +147,7 @@ const RideRequestsScreen = () => {
                 </View>
               </TouchableOpacity>
             )}
-          />
+          />):(<Text>Aucun Demandes de Trajets</Text>)}
 
           <Modal
             visible={isModalVisible}

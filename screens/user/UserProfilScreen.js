@@ -120,7 +120,7 @@ const UserProfileScreen = () => {
                       <Text style={styles.rideRoute}>
                         {histo.startLocation.destination} → {histo.endLocation.destination}
                       </Text>
-                      <Text style={styles.rideDate}>12 juin 2023 - 14:30</Text>
+                      <Text style={styles.rideDate}>12 juin 2024 - 14:30</Text>
                     </View>
                     <Text style={styles.ridePrice}>{histo.price}</Text>
                   </View>

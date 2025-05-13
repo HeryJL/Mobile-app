@@ -9,7 +9,7 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import Icon from '@expo/vector-icons/MaterialIcons';
 import { AuthContext } from '../../context/AuthContext';
 import { getNearbyTaxis } from '../../services/location.service';
-
+import { getRideAccepte, getRideAttente } from './../../services/ride.service';
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -26,8 +26,10 @@ const UserHomeScreen = () => {
   const [location, setLocation] = useState(null);
   const [driverLocation, setDriverLocation] = useState(null);
   const [taxis,setTaxis] = useState(null)
+  const [taxiAccepte, setTaxiAccepte] = useState([])
   const [showRouteDetails, setShowRouteDetails] = useState(false);
   const mapRef = useRef(null);
+  const { userToken} = useContext(AuthContext)
 
   // Configurer les notifications
   useEffect(() => {
@@ -62,6 +64,73 @@ const UserHomeScreen = () => {
 
     setupNotifications();
   }, []);
+
+   useEffect(() => {
+      let intervalIds;
+      const taxiAttent = async () => {
+        try {
+          const dataAccepte = await getRideAttente(userToken);
+          const updatedData = {
+            departure:dataAccepte.startLocation.destination,
+            departureCoordinates: { latitude:dataAccepte.startLocation.coordinates[1],
+            longitude:dataAccepte.startLocation.coordinates[0] },
+            arrival: dataAccepte.endLocation.destination,
+            arrivalCoordinates: { latitude:dataAccepte.endLocation.coordinates[1],
+               longitude:dataAccepte.endLocation.coordinates[0] },
+            distance:dataAccepte.distanceKm,
+            reservation: {
+              taxiId: dataAccepte.taxiId._id,
+              driverName: dataAccepte.taxiId.driverId.name,
+              licensePlate: dataAccepte.taxiId.licensePlate,
+              model: dataAccepte.taxiId.model,
+              color: dataAccepte.taxiId.color,
+              status: dataAccepte.status,
+              price:dataAccepte.price 
+            },
+          }
+          if(dataAccepte) {
+            setTaxiAccepte(updatedData)
+            set
+          } else {
+            setTaxiAccepte(null)
+          }
+        } catch (err) {
+          console.error('Erreur envoi position:', Idtaxi);
+        }
+      };
+  
+      const taxiAccepte = async () => {
+        try {
+          const dataAccepte = await getRideAccepte(userToken);
+          const updatedData = {
+            departure:dataAccepte.startLocation.destination,
+            departureCoordinates: { latitude:dataAccepte.startLocation.coordinates[1],
+            longitude:dataAccepte.startLocation.coordinates[0] },
+            arrival: dataAccepte.endLocation.destination,
+            arrivalCoordinates: { latitude:dataAccepte.endLocation.coordinates[1],
+            ongitude:dataAccepte.endLocation.coordinates[0] },
+            distance:dataAccepte.distanceKm,
+            reservation: {
+              taxiId: dataAccepte.taxiId._id,
+              driverName: dataAccepte.taxiId.driverId.name,
+              licensePlate: dataAccepte.taxiId.licensePlate,
+              model: dataAccepte.taxiId.model,
+              color: dataAccepte.taxiId.color,
+              status: dataAccepte.status,
+              price:dataAccepte.price 
+            },
+          }
+          dataAccepte ? setTaxiAccepte(updatedData):setTaxiAccepte(null)
+        } catch (err) {
+          console.error('Erreur envoi position:', Idtaxi);
+        }
+      };
+      taxiAttent();
+      taxiAccepte(); // appel initial
+      intervalIds = setInterval(taxiAccepte, 2000);
+  
+      return () => clearInterval(intervalIds);
+    });
 
   // Obtenir la position de l'utilisateur
   useEffect(() => {
@@ -149,24 +218,24 @@ const UserHomeScreen = () => {
 
   // Simuler la position du chauffeur
   useEffect(() => {
-    if (savedRoute && savedRoute.reservation && savedRoute.reservation.status === 'confirmed') {
-      const taxi = taxis.find(t => t._id === savedRoute.reservation.taxiId);
-      if (taxi) {
-        setDriverLocation(taxi.coordinates);
-        console.log('Driver Location:', taxi.coordinates); // Log pour déboguer
+    if (taxiAccepte && taxiAccepte.reservation && taxiAccepte.reservation.status === 'en cours') {
+      //const taxi = taxis.find(t => t._id === taxiAccepte.reservation.taxiId);
+      if (taxiAccepte.reservation.status === 'en cours') {
+        setDriverLocation(taxiAccepte.coordinates);
+        console.log('Driver Location:', taxiAccepte.coordinates); // Log pour déboguer
 
         // Simuler le déplacement du chauffeur vers la destination
         const interval = setInterval(() => {
           setDriverLocation(prev => {
-            if (!prev || !savedRoute.arrivalCoordinates) return prev;
+            if (!prev || !taxiAccepte.arrivalCoordinates) return prev;
 
             // Calculer la distance restante
-            const distance = calculateDistance(prev, savedRoute.arrivalCoordinates);
+            const distance = calculateDistance(prev,taxiAccepte.arrivalCoordinates);
             if (distance < 50) { // Seuil de 50 mètres
               clearInterval(interval);
               sendLocalNotification(
                 'Chauffeur arrivé',
-                `Votre chauffeur ${savedRoute.reservation.driverName} est arrivé à votre destination.`
+                `Votre chauffeur ${taxiAccepte.reservation.driverName} est arrivé à votre destination.`
               );
               Alert.alert('Arrivée', 'Votre chauffeur est arrivé à votre destination.');
               updateSavedRoute(null); // Supprimer le trajet
@@ -175,8 +244,8 @@ const UserHomeScreen = () => {
 
             // Simuler un déplacement progressif
             const speed = 0.0001; // Ajuster pour simuler la vitesse
-            const deltaLat = (savedRoute.arrivalCoordinates.latitude - prev.latitude) * speed;
-            const deltaLon = (savedRoute.arrivalCoordinates.longitude - prev.longitude) * speed;
+            const deltaLat = (taxiAccepte.arrivalCoordinates.latitude - prev.latitude) * speed;
+            const deltaLon = (taxiAccepte.arrivalCoordinates.longitude - prev.longitude) * speed;
 
             return {
               latitude: prev.latitude + deltaLat,
@@ -190,19 +259,19 @@ const UserHomeScreen = () => {
     } else {
       setDriverLocation(null);
     }
-  }, [savedRoute]);
+  }, [taxiAccepte]);
 
   // Mettre à jour la carte pour inclure la position du chauffeur
   useEffect(() => {
-    if (savedRoute && mapRef.current) {
-      console.log('Saved Route Coordinates:', savedRoute); // Log pour déboguer
+    if (taxiAccepte && mapRef.current) {
+      console.log('Saved Route Coordinates:',taxiAccepte); // Log pour déboguer
       const coordinates = [
-        savedRoute.departureCoordinates,
-        savedRoute.arrivalCoordinates,
+       taxiAccepte.departureCoordinates,
+       taxiAccepte.arrivalCoordinates,
       ];
-      if (savedRoute.routeCoordinates.length > 0) {
-        coordinates.push(...savedRoute.routeCoordinates);
-      }
+      // if (savedRoute.routeCoordinates.length > 0) {
+      //   coordinates.push(...savedRoute.routeCoordinates);
+      // }
       if (driverLocation) {
         coordinates.push(driverLocation);
       }
@@ -213,7 +282,7 @@ const UserHomeScreen = () => {
     } else if (location && mapRef.current) {
       mapRef.current.animateToRegion(location, 1000);
     }
-  }, [savedRoute, location, driverLocation]);
+  }, [taxiAccepte, location, driverLocation]);
 
   const fallbackRegion = {
     latitude: -18.8792,
@@ -225,8 +294,8 @@ const UserHomeScreen = () => {
   const initialRegion = location || fallbackRegion;
 
   const handleEditRoute = () => {
-    if (savedRoute) {
-      navigation.navigate('MapScreen', { route: savedRoute });
+    if (taxiAccepte) {
+      navigation.navigate('MapScreen', { route:taxiAccepte });
     } else {
       Alert.alert('Erreur', 'Aucun itinéraire sauvegardé à modifier.');
     }
@@ -279,7 +348,7 @@ const UserHomeScreen = () => {
         <View style={styles.headerLeft}>
           <Icon name="map" size={24} color="#fff" style={styles.headerIcon} />
           <Text style={styles.greetingText}>Bonjour, prêt à rouler ?</Text>
-          {savedRoute && savedRoute.reservation && savedRoute.reservation.status === 'confirmed' && (
+          {taxiAccepte && taxiAccepte.status === 'en cours' && (
             <Text style={styles.taxiStatusText}>{"\n"}Votre taxi arrive, veuillez patienter un peu</Text>
           )}
         </View>
@@ -295,12 +364,12 @@ const UserHomeScreen = () => {
           style={styles.map}
           initialRegion={initialRegion}
           customMapStyle={[]}
-          key={savedRoute ? savedRoute.id : 'no-route'}
+          key={taxiAccepte ? taxiAccepte.id : 'no-route'}
           showsUserLocation={true}
           showsMyLocationButton={true}
         >
           {/* Marqueur pour la position de l'utilisateur */}
-          {!savedRoute && location && isValidCoordinate(location) && (
+          {!taxiAccepte && location && isValidCoordinate(location) && (
             <Marker
               coordinate={{ latitude: location.latitude, longitude: location.longitude }}
               pinColor="blue"
@@ -310,33 +379,33 @@ const UserHomeScreen = () => {
           )}
 
           {/* Marqueurs pour le trajet (départ, arrivée, chauffeur) */}
-          {savedRoute ?
-            isValidCoordinate(savedRoute.departureCoordinates) &&
-            isValidCoordinate(savedRoute.arrivalCoordinates) && (
+          {taxiAccepte.length !== 0  ?
+            isValidCoordinate(taxiAccepte.departureCoordinates) &&
+            isValidCoordinate(taxiAccepte.arrivalCoordinates) && (
               <>
                 <Marker
-                  coordinate={savedRoute.departureCoordinates}
+                  coordinate={taxiAccepte.departureCoordinates}
                   pinColor="green"
                   title="Départ"
-                  description={savedRoute.departure || 'Point de départ'}
+                  description={taxiAccepte.departure || 'Point de départ'}
                 />
                 <Marker
-                  coordinate={savedRoute.arrivalCoordinates}
+                  coordinate={taxiAccepte.arrivalCoordinates}
                   pinColor="red"
                   title="Arrivée"
-                  description={savedRoute.arrival || 'Point d’arrivée'}
+                  description={taxiAccepte.arrival || 'Point d’arrivée'}
                 />
                 {driverLocation && isValidCoordinate(driverLocation) && (
                   <Marker
                     coordinate={driverLocation}
                     pinColor="yellow"
                     title="Chauffeur"
-                    description={`${savedRoute.reservation.driverName}\nModèle: ${savedRoute.reservation.model}\nPlaque: ${savedRoute.reservation.licensePlate}`}
+                    description={`${taxiAccepte.reservation.driverName}\nModèle: ${taxiAccepte.reservation.model}\nPlaque: ${taxiAccepte.reservation.licensePlate}`}
                   />
                 )}
-                {Array.isArray(savedRoute.routeCoordinates) &&
-                savedRoute.routeCoordinates.length > 0 &&
-                savedRoute.routeCoordinates.every(isValidCoordinate) ? (
+                {/* {Array.isArray(savedRoute.routeCoordinates) &&
+               savedRoute.routeCoordinates.length > 0 &&
+               savedRoute.routeCoordinates.every(isValidCoordinate) ? (
                   <Polyline
                     coordinates={savedRoute.routeCoordinates}
                     strokeColor="#1e90ff"
@@ -344,53 +413,53 @@ const UserHomeScreen = () => {
                   />
                 ) : (
                   <Polyline
-                    coordinates={[savedRoute.departureCoordinates, savedRoute.arrivalCoordinates]}
+                    coordinates={[taxiAccepte.departureCoordinates,taxiAccepte.arrivalCoordinates]}
                     strokeColor="#1e90ff"
                     strokeWidth={4}
                     strokeDashPattern={[10, 10]}
                   />
-                )}
+                )} */}
               </>
             ):(
               taxis && taxis.map(taxi => (
                 <Marker
                 coordinate={{ latitude: taxi.coordinates.latitude, longitude: taxi.coordinates.longitude }}
-                pinColor={taxi.status === "disponible" ? "vert":"yellow"}
+                pinColor={taxi.status === "disponible" ? "green":"yellow"}
                 title= {taxi.licensePlate}
                 description={`chauffeur:${taxi.driverId.name}`}
               />
               ))
            )}
         </MapView>
-        {savedRoute && showRouteDetails && (
+        {taxiAccepte.length !== 0  && showRouteDetails && (
           <View style={styles.routeDetails}>
-            <Text style={styles.routeText}>Départ: {savedRoute.departure || 'Non spécifié'}</Text>
-            <Text style={styles.routeText}>Arrivée: {savedRoute.arrival || 'Non spécifié'}</Text>
-            <Text style={styles.routeText}>Distance: {savedRoute.distance || 'Non calculée'} km</Text>
-            {savedRoute.reservation && (
+            <Text style={styles.routeText}>Départ: {taxiAccepte.departure || 'Non spécifié'}</Text>
+            <Text style={styles.routeText}>Arrivée: {taxiAccepte.arrival || 'Non spécifié'}</Text>
+            <Text style={styles.routeText}>Distance: {taxiAccepte.distance || 'Non calculée'} km</Text>
+            {taxiAccepte.reservation && (
               <>
                 <Text style={styles.reservationText}>
-                  Réservation: Taxi {savedRoute.reservation.model} ({savedRoute.reservation.licensePlate})
+                  Réservation: Taxi {taxiAccepte.reservation.model} ({taxiAccepte.reservation.licensePlate})
                 </Text>
                 <Text style={styles.reservationText}>
-                  Chauffeur: {savedRoute.reservation.driverName}
+                  Chauffeur: {taxiAccepte.reservation.driverName}
                 </Text>
                 <Text
                   style={[
                     styles.statusText,
                     {
                       color:
-                        savedRoute.reservation.status === 'confirmed'
+                       taxiAccepte.reservation.status === 'en cours'
                           ? '#4CAF50'
                           : '#FFA500',
                     },
                   ]}
                 >
-                  Statut: {savedRoute.reservation.status === 'confirmed' ? 'Confirmé' : 'En attente de confirmation'}
+                  Statut: {taxiAccepte.reservation.status === 'en cours' ? 'Confirmé' : 'En attente de confirmation'}
                 </Text>
               </>
             )}
-            {savedRoute.reservation && savedRoute.reservation.status === 'pending' && (
+            {taxiAccepte.reservation &&taxiAccepte.reservation.status === 'en attente' && (
               <View style={styles.routeActions}>
                 <TouchableOpacity style={styles.editButton} onPress={handleEditRoute}>
                   <Icon name="edit" size={20} color="#fff" style={styles.buttonIcon} />
@@ -404,7 +473,7 @@ const UserHomeScreen = () => {
             )}
           </View>
         )}
-        {savedRoute && (
+        {taxiAccepte.length !== 0 && (
           <TouchableOpacity style={styles.toggleButton} onPress={toggleRouteDetails}>
             <Icon
               name={showRouteDetails ? 'visibility-off' : 'visibility'}
@@ -433,7 +502,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#60a5fa',
     padding: 15,
-    borderBottomLeftRadius: 10,
+    borderBottomLeftRadius: 10, 
     borderBottomRightRadius: 10,
     elevation: 4,
     shadowColor: '#000',

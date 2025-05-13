@@ -75,7 +75,7 @@ const DriverHomeScreen = () => {
             passengerName: data.clientId.name,
             pickupAddress: data.startLocation.destination,
             dropoffAddress: data.endLocation.destination,
-            estimatedTime: "20 min",
+            estimatedTime:  data.distanceKm*7.5,
             distance: data.distanceKm,
             pickupCoords:{ latitude: data.startLocation.coordinates[1], longitude: data.startLocation.coordinates[0]}, 
             dropoffCoords:{latitude:data.endLocation.coordinates[1],longitude:data.endLocation.coordinates[0]},
